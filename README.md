@@ -1,0 +1,2 @@
+#0216-07-01
+目前项目包括两个工程文件，一个是TCP_Server_Console,放在nanopi上运行的服务端，通过opencv获取摄像头图像，通过UDP协议发送给客户端，同时搭建了一个TCP服务器，将计算和识别到的结果通过TCP协议发送给客户端并向串口发送动作指令；另外一个是QT-ColorSegmentation,是放在windows PC端运行的客户端，负责接收显示nanopi上的摄像头图像，以及选取目标颜色、发送指令。
