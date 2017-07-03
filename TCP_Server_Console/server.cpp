@@ -28,7 +28,6 @@ server::server()
     serialPort = new SerialPort(this);
 
     videoControl = new VideoControl(this);
-    connect(videoControl,SIGNAL(markChanged(bool)),this,SLOT(onMarkChanged(bool)));
     connect(videoControl,SIGNAL(directionChanged(int)),this,SLOT(onDirectionChanged(int)));
     connect(videoControl,SIGNAL(sendInfo(QString)), this, SLOT(onSendInfo(QString)));
 
@@ -66,6 +65,7 @@ void server::startListen()
 
 bool server::parseData(const QString &msg)
 {
+    m_result_msg = msg;
     bool isOk = false;
     if (msg.isEmpty())
         return isOk;
@@ -83,6 +83,12 @@ bool server::parseData(const QString &msg)
             videoControl->setSelectRect(temp);
             isOk = true;
         }
+    }
+    else if (msg.startsWith("set Stop.Enable="))
+    {
+        int ret = msg.mid(msg.indexOf("=")+1).toInt();
+        videoControl->setStopEnable(ret);
+        isOk = true;
     }
     else if(msg.startsWith("set Robot.Action="))
     {
@@ -125,78 +131,11 @@ void server::WriteMsg(const QByteArray &msg)
     QByteArray outBlock;
     QDataStream out(&outBlock,QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_5_3);
-
-    out<<(qint64)0;
     out<<msg;
-    out.device()->seek(0);
-    out<<(qint64)(outBlock.size()-sizeof(qint64));
-
     tcpSocket->write(outBlock);
 }
 
-//当有新的socket连接
-void server::onNewConnection()
-{
-    tcpSocket = tcpServer->nextPendingConnection();
-    connect(tcpSocket,SIGNAL(readyRead()),this,SLOT(onSocketRead()));
-    connect(tcpSocket,SIGNAL(error(QAbstractSocket::SocketError)),this,SLOT(disPlayError(QAbstractSocket::SocketError)));
-
-    QString retMsg("From server: \r\n");
-    retMsg.append(QString("Camera.Resolution=%1x%2\r\n").arg(g_frame_width).arg(g_frame_height));
-    retMsg.append(QString("Area.Position=%1,%2\r\n").arg(g_horizontal_ratio).arg(g_rotation_range));
-    retMsg.append(QString("Open %1 %2 !\r\n").arg(g_serial_name).arg(isOPenSerial ? "successfully" : "failed"));
-    retMsg.append("End\r\n");
-    WriteMsg(retMsg.toUtf8()); //连接成功，返回信息
-
-    videoControl->openUrl(tcpSocket->peerAddress().toString()); //开启线程，读取摄像头
-}
-
-//接收数据
-void server::onSocketRead()
-{   
-    QString receive_data,result_data;
-    receive_data = QString(tcpSocket->readAll());
-    qDebug()<< "receive: "<< receive_data;
-    if (parseData(receive_data))
-    {
-        result_data = QString("send successfully !");
-    }
-    else
-    {
-        result_data = QString("Error: invalid commands !");
-    }
-    //接收成功，返回结果
-    WriteMsg(result_data.toUtf8());
-}
-
-//打印错误信息
-void server::disPlayError(QAbstractSocket::SocketError)
-{
-    qDebug()<<tcpSocket->errorString();
-    tcpSocket->close();
-    videoControl->stop();
-}
-
-void server::onMarkChanged(bool flag)
-{    
-    QString result_data;
-    if (flag)
-    {
-        result_data = QString("get Mark.Rect=%1,%2,%3,%4")
-                .arg(videoControl->currentMark.x())
-                .arg(videoControl->currentMark.y())
-                .arg(videoControl->currentMark.width())
-                .arg(videoControl->currentMark.height());
-    }
-    else
-    {
-        result_data = QString("cannot find Mark");
-    }
-
-    WriteMsg(result_data.toUtf8());
-}
-
-void server::onDirectionChanged(int val)
+void server::WriteSerial(int val)
 {
     int bufferSize = 9;
     unsigned char serialnum[] = {0xd3,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x31};
@@ -267,8 +206,56 @@ void server::onDirectionChanged(int val)
         qDebug("start action: move,%d",val);
         char* buf = (char*)(&serialnum);
         serialPort->sendMsg(buf,bufferSize);
-//        QTimer::singleShot(g_time_count, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
+//        QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
     }
+}
+
+//当有新的socket连接
+void server::onNewConnection()
+{
+    tcpSocket = tcpServer->nextPendingConnection();
+    connect(tcpSocket,SIGNAL(readyRead()),this,SLOT(onSocketRead()));
+    connect(tcpSocket,SIGNAL(error(QAbstractSocket::SocketError)),this,SLOT(disPlayError(QAbstractSocket::SocketError)));
+
+    QString retMsg("From server: \r\n");
+    retMsg.append(QString("Camera.Resolution=%1x%2\r\n").arg(g_frame_width).arg(g_frame_height));
+    retMsg.append(QString("Area.Position=%1,%2\r\n").arg(g_horizontal_ratio).arg(g_rotation_range));
+    retMsg.append(QString("Open %1 %2 !\r\n").arg(g_serial_name).arg(isOPenSerial ? "successfully" : "failed"));
+    retMsg.append("End\r\n");
+    WriteMsg(retMsg.toUtf8()); //连接成功，返回信息
+
+    videoControl->openUrl(tcpSocket->peerAddress().toString()); //开启线程，读取摄像头
+}
+
+//接收数据
+void server::onSocketRead()
+{   
+    QString receive_data;
+    receive_data = QString::fromUtf8(tcpSocket->readAll());
+    qDebug()<< "receive: "<< receive_data;
+    if (parseData(receive_data))
+    {
+        m_result_msg = QString("send ok (\"%1\")\r\n").arg(m_result_msg);
+    }
+    else
+    {
+        m_result_msg = QString("send error (\"%1\")\r\n").arg(m_result_msg);
+    }
+    //接收成功，返回结果
+    WriteMsg(m_result_msg.toUtf8());
+}
+
+//打印错误信息
+void server::disPlayError(QAbstractSocket::SocketError)
+{
+    qDebug()<<tcpSocket->errorString();
+    tcpSocket->close();
+    videoControl->stop();
+}
+
+void server::onDirectionChanged(int val)
+{
+    WriteSerial(val);
 }
 
 void server::onActionFinished()

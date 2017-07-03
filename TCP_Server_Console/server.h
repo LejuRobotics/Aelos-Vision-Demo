@@ -6,7 +6,6 @@
 #include "SerialPort.h"
 #include "VideoControl.h"
 #include "global_var.h"
-#include <QTimer>
 
 class server : public QObject
 {
@@ -17,13 +16,13 @@ public:
 
     void startListen(); //开始监听
     bool parseData(const QString &msg); //解析数据
-    void WriteMsg(const QByteArray &msg);
+    void WriteMsg(const QByteArray &msg); //通过tcp发送信息
+    void WriteSerial(int val);  //写入串口
 
 private slots:
     void onNewConnection();
     void onSocketRead();
     void disPlayError(QAbstractSocket::SocketError);
-    void onMarkChanged(bool flag);
     void onDirectionChanged(int val);
     void onActionFinished();
     void onTimeout();
@@ -35,10 +34,11 @@ private:
     SerialPort *serialPort; //操控串口类
     VideoControl *videoControl; //读取摄像头的类
     bool isOPenSerial;
-
-    void readConfigFile();
-
     QTimer *m_timer;
+
+    QString m_result_msg;
+
+    void readConfigFile();  //读取配置文件
 };
 
 #endif // SERVER_H

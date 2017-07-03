@@ -11,13 +11,18 @@ VideoControl::VideoControl(QObject *parent) : QThread(parent)
     actionStatus = Initial;
     m_left_command = 3;
     m_right_command = 4;
+    m_bStopEnable = false;
+    m_stop_size = 0;
+    isArrive = false;
+    m_curSize = 0;
+    m_action_order = 1;
 }
 
 VideoControl::~VideoControl()
 {
     isPause = true;
     this->quit();
-    if (!this->wait(3000))
+    if (!this->wait(100))
     {
         this->terminate();
     }
@@ -49,6 +54,21 @@ void VideoControl::stop()
     isSendFrame = false;
 }
 
+void VideoControl::setStopEnable(bool flag)
+{
+    m_bStopEnable = flag;
+    if (flag)
+    {
+        m_stop_size = currentMark.width()*currentMark.height();
+        qDebug("record size: %d", m_stop_size);
+    }
+    else
+    {
+        m_stop_size = 0;
+        isArrive = false;
+    }
+}
+
 void VideoControl::run()
 {
     VideoCapture cap;
@@ -56,7 +76,7 @@ void VideoControl::run()
     if (!cap.isOpened())
     {
         qDebug("cannot find camera !");
-        emit sendInfo("cannot find camera !");
+        emit sendInfo("cannot find camera !\r\n");
         return;
     }
 
@@ -77,7 +97,7 @@ void VideoControl::run()
         if (frame.empty())
         {
             qDebug("frame is empty !");
-            emit sendInfo("cannot read frame !");
+            emit sendInfo("cannot read frame !\r\n");
             continue;
         }
 
@@ -138,7 +158,7 @@ void VideoControl::run()
             }
             else
             {
-                if (!actionMode || actionStatus == Doing || !isReady)
+                if (!actionMode || actionStatus == Doing || !isReady || isArrive)
                 {
                     continue;
                 }
@@ -158,44 +178,62 @@ void VideoControl::run()
             segmenter.segment((unsigned char*)(yuv_mat.data), 1); //核心函数，识别颜色
 //            qDebug("Time elapsed: %d ms", t.elapsed());  //打印执行计算识别颜色函数消耗的时间
 
+            QString msg("@Begin:\r\n");
             if (getCurrentMark(segmenter.objList)) //当识别到物体位置
             {
-                emit markChanged(true);
+                msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
+                           .arg(currentMark.x())
+                           .arg(currentMark.y())
+                           .arg(currentMark.width())
+                           .arg(currentMark.height()));
 
-                if (actionMode)
+                if (m_bStopEnable)
                 {
-                    actionStatus = Doing;
-                    isReady = false;
-                    calculateDirection();
-                    switch (curPosition)
+                    if (compareMark())
                     {
-                    case Center: //前进
-                        emit directionChanged(g_forward_command);
-                        break;
-                    case Left:  //左转
-                        emit directionChanged(m_left_command);
-                        break;
-                    case Right: //右转
-                        emit directionChanged(m_right_command);
-                        break;
-                    case Unknown:
-                        break;
-                    default:
-                        break;
+                        isArrive = true;
+                        msg.append(QString("Reach.Target=%1\r\n").arg(m_curSize));
                     }
                 }
+
+                calculateDirection();
             }
             else //没有识别到物体位置
             {
                 curPosition = Unknown;
-                emit markChanged(false);
-                if (actionMode)
-                {
-                    actionStatus = Doing;
-                    isReady = false;
-                    emit directionChanged(g_right_l_command); //如果没有识别到物体，持续向右转
-                }
+                msg.append("Unrecognized color\r\n");
             }
+
+            msg.append("@End\r\n");
+            emit sendInfo(msg);
+
+            if (isArrive)
+                continue;
+
+            if (actionMode)
+            {
+                actionStatus = Doing;
+                isReady = false;
+                switch (curPosition)
+                {
+                case Center: //前进
+                    m_action_order = g_forward_command;
+                    break;
+                case Left:  //左转
+                    m_action_order = m_left_command;
+                    break;
+                case Right: //右转
+                    m_action_order = m_right_command;
+                    break;
+                case Unknown: //没有识别到颜色，持续右转
+                    m_action_order = g_right_l_command;
+                    break;
+                default:
+                    break;
+                }
+                emit directionChanged(m_action_order);
+            }
+
         }
         else
         {
@@ -204,6 +242,11 @@ void VideoControl::run()
         //[3]
 
         msleep(1);
+    }
+
+    if (isPause)
+    {
+        cap.release();  //关闭摄像头
     }
 }
 
@@ -314,4 +357,10 @@ void VideoControl::calculateDirection()
             m_right_command = g_right_l_command;
         }
     }
+}
+
+bool VideoControl::compareMark()
+{
+    m_curSize = currentMark.width()*currentMark.height();
+    return m_curSize >= m_stop_size;
 }
