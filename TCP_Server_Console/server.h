@@ -29,16 +29,21 @@ private slots:
     void onSendInfo(const QString &msg);
 
 private:
+    QString m_client_ip;
+    bool isOPenSerial;
+    int m_connection_count;
+    QString m_result_msg;
+
     QTcpServer *tcpServer; //TCP服务器
     QTcpSocket *tcpSocket; //soket套接字
     SerialPort *serialPort; //操控串口类
     VideoControl *videoControl; //读取摄像头的类
-    bool isOPenSerial;
     QTimer *m_timer;
 
-    QString m_result_msg;
-
     void readConfigFile();  //读取配置文件
+
+
+//    QTcpSocket *testSocket;
 };
 
 #endif // SERVER_H

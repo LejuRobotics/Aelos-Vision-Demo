@@ -39,7 +39,6 @@ void VideoControl::setSelectRect(const QRect &tmp)
 
 void VideoControl::openUrl(const QString &ip)
 {
-    qDebug()<<ip<<"is connected !";
     server_ip = ip;
     isPause = false;
     isSendFrame = true;
@@ -111,6 +110,7 @@ void VideoControl::run()
             QBuffer buf(&byte);
             buf.open(QIODevice::WriteOnly);
             rgbImg->save(&buf,"JPEG",g_frame_quality);
+
             udpSocket->writeDatagram(byte.data(),byte.size(),QHostAddress(server_ip),g_broadcast_port); //向指定ip地址发送图像
             byte.resize(0);
         }

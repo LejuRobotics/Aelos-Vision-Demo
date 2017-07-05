@@ -1,10 +1,7 @@
 #ifndef PAINTERLABEL_H
 #define PAINTERLABEL_H
 
-#include <QLabel>
-#include <QMouseEvent>
-#include <QPainter>
-#include <QDebug>
+#include "precompiled.h"
 
 class PaintLabel : public QLabel
 {

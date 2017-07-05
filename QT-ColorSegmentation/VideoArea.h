@@ -1,14 +1,10 @@
 #ifndef VIDEOAREA_H
 #define VIDEOAREA_H
 
-#include <QMainWindow>
-#include <QtNetwork>
-#include <QTimer>
-#include <QTime>
-#include <QStatusBar>
-#include <QButtonGroup>
+#include "precompiled.h"
 #include "painterlabel.h"
-#include "portdialog.h"
+#include "PortSetupDialog.h"
+#include "ScanIpDiaog.h"
 
 namespace Ui {
 class VideoArea;
@@ -23,7 +19,8 @@ public:
     ~VideoArea();
 
 private slots:    
-    void on_connect_btn_clicked(); //点击连接按钮执行函数
+    void on_connect_btn_clicked();
+    void onStartConnected(const QString &ip);
 
     void onLongSocketReadyRead();
     void onSocketDisconnect();
@@ -33,21 +30,23 @@ private slots:
 
     void selectFinished(const QRect &_rect);
 
-    void onActioPortClicked();    //菜单栏
+    //clicked on menubar
+    void onActioPortClicked();
     void onActionAreaViewClicked(bool flag);
 
     void on_record_btn_clicked();
     void on_reset_btn_clicked();
-    void onRadioGroupClicked(int btnID, bool checked);
-    void onActionButtonGroupClicked(int btnID);  //动作按钮
+    void onRadioGroupClicked(int btnID, bool checked); //check acuto or manual
+    void onActionButtonGroupClicked(int btnID);  //clicked on action buttons
 
-private:
-    void readConfigFile();
-    void saveConfigFile();
-    void recoverStatus();
+protected:
+    virtual void resizeEvent(QResizeEvent *e) Q_DECL_OVERRIDE;
 
 private:
     Ui::VideoArea *ui;
+
+    PaintLabel *mark_label;
+    TestLabel *test_label;
 
     int camera_with;
     int camera_height;
@@ -55,11 +54,16 @@ private:
     double m_rorationRange;
     QRect m_original_rect;
 
+
+
     QList<QPushButton*> btnList;
     QButtonGroup *action_btn_group;
     QButtonGroup *radio_btn_group;
 
-    portDialog *dialog;
+    PortSetupDialog *portSetupDialog;
+    ScanIpDiaog *scanIpDialog;
+
+    QString m_server_ip;
 
     QTcpSocket *m_long_socket;
     QDataStream in;
@@ -69,6 +73,10 @@ private:
 
     QTimer *m_timer;
     int m_frame_count;     
+
+    void readConfigFile();
+    void saveConfigFile();
+    void recoverStatus();
 };
 
 #endif // VIDEOAREA_H

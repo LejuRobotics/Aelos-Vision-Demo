@@ -7,12 +7,12 @@ VideoArea::VideoArea(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    camera_with = 320;
-    camera_height = 240;
-    m_centerAreaRatio = 0.4;
-    m_rorationRange = 0.25;
+    test_label = new TestLabel(ui->centralwidget);
+    test_label->hide();
+    mark_label = new PaintLabel(ui->centralwidget);
+    connect(mark_label,SIGNAL(selectFinished(QRect)),this,SLOT(selectFinished(QRect)));
 
-    ui->test_label->hide();
+    ui->horizontalLayout->setSizeConstraint(QLayout::SetFixedSize);
 
     action_btn_group = new QButtonGroup(this);
     btnList << ui->action_btn_1 << ui->action_btn_2 << ui->action_btn_3
@@ -30,7 +30,6 @@ VideoArea::VideoArea(QWidget *parent) :
     ui->auto_radio->setEnabled(false);
     ui->manual_radio->setEnabled(false);
 
-    connect(ui->mark_label,SIGNAL(selectFinished(QRect)),this,SLOT(selectFinished(QRect)));
     connect(ui->action_Port, SIGNAL(triggered(bool)), this, SLOT(onActioPortClicked()));
     connect(ui->action_Area, SIGNAL(toggled(bool)), this, SLOT(onActionAreaViewClicked(bool)));
 
@@ -39,8 +38,17 @@ VideoArea::VideoArea(QWidget *parent) :
     radio_btn_group->addButton(ui->manual_radio,1);
     connect(radio_btn_group, SIGNAL(buttonToggled(int,bool)), this, SLOT(onRadioGroupClicked(int,bool)));
 
-    dialog = new portDialog(this);
-    dialog->hide();
+    camera_with = 320;
+    camera_height = 240;
+    m_centerAreaRatio = 0.4;
+    m_rorationRange = 0.25;
+
+    portSetupDialog = new PortSetupDialog(this);
+    portSetupDialog->hide();
+
+    scanIpDialog = new ScanIpDiaog(this);
+    scanIpDialog->hide();
+    connect(scanIpDialog, SIGNAL(startConnected(QString)), this, SLOT(onStartConnected(QString)));
 
     QNetworkProxyFactory::setUseSystemConfiguration(false);
     m_long_socket = new QTcpSocket(this);
@@ -63,49 +71,54 @@ VideoArea::~VideoArea()
 
 void VideoArea::on_connect_btn_clicked()
 {
-    QString msg;
-    if (ui->connect_btn->text() == "连接")
+    if (ui->connect_btn->text() == tr("Connect"))
     {
-        m_long_socket->abort();
-        m_long_socket->connectToHost(ui->ip_edit->text(), ui->port_edit->text().toInt());
-        if (!m_long_socket->waitForConnected(3000))
-        {
-            msg = QString("connect to %1 failed !").arg(ui->ip_edit->text());
-            ui->textEdit->append(msg);
-            return;
-        }
-        ui->connect_btn->setText("断开");
-        msg = QString("connect to %1 successful !").arg(ui->ip_edit->text());
-        ui->textEdit->append(msg);
-
-        connect(m_long_socket, SIGNAL(readyRead()),this,SLOT(onLongSocketReadyRead()));
-        connect(m_long_socket,SIGNAL(disconnected()), this, SLOT(onSocketDisconnect()));
-
-        udpSocket->abort();
-        if (!udpSocket->bind(dialog->udpPort()))
-        {
-           ui->textEdit->append(udpSocket->errorString());
-           return;
-        }
-        ui->textEdit->append(QString("bind %2 successful !").arg(dialog->udpPort()));
-        connect(udpSocket,SIGNAL(readyRead()), this, SLOT(onUdpSocketReadyRead()));
-
-        ui->record_btn->setEnabled(true);
-        ui->reset_btn->setEnabled(true);
-        ui->auto_radio->setEnabled(true);
-        ui->manual_radio->setEnabled(true);
-        for (int i=0; i<btnList.size(); ++i)
-        {
-            btnList[i]->setEnabled(true);
-        }
-
-        ui->mark_label->cleanRect(); //清除标记框        
-        saveConfigFile();
+       scanIpDialog->startScan();
     }
     else
     {
         recoverStatus();
     }
+}
+
+void VideoArea::onStartConnected(const QString &ip)
+{
+    m_server_ip = ip;
+    QString msg;
+    m_long_socket->abort();
+    m_long_socket->connectToHost(ip, portSetupDialog->TcpPort());
+    if (!m_long_socket->waitForConnected(3000))
+    {
+        msg = QString("connect to %1 failed !").arg(ip);
+        ui->textEdit->append(msg);
+        return;
+    }
+
+    ui->connect_btn->setText(tr("Disconnect"));
+
+    connect(m_long_socket, SIGNAL(readyRead()),this,SLOT(onLongSocketReadyRead()));
+    connect(m_long_socket,SIGNAL(disconnected()), this, SLOT(onSocketDisconnect()));
+
+    udpSocket->abort();
+    if (!udpSocket->bind(portSetupDialog->UdpPort()))
+    {
+       ui->textEdit->append(udpSocket->errorString());
+       return;
+    }
+    ui->textEdit->append(QString("Bind %2 successful !").arg(portSetupDialog->UdpPort()));
+    connect(udpSocket,SIGNAL(readyRead()), this, SLOT(onUdpSocketReadyRead()));
+
+    ui->record_btn->setEnabled(true);
+    ui->reset_btn->setEnabled(true);
+    ui->auto_radio->setEnabled(true);
+    ui->manual_radio->setEnabled(true);
+    for (int i=0; i<btnList.size(); ++i)
+    {
+        btnList[i]->setEnabled(true);
+    }
+
+    mark_label->cleanRect(); //清除标记框
+    saveConfigFile();
 }
 
 void VideoArea::onLongSocketReadyRead()
@@ -115,7 +128,19 @@ void VideoArea::onLongSocketReadyRead()
     QString readData = QString::fromUtf8(message);
     ui->textEdit->append(readData);
 
-    if (readData.startsWith("From server:"))
+    if (readData.startsWith("Connect to server successful"))
+    {
+        m_long_socket->write(QString("95f41ce1").toUtf8());
+    }
+    else if (readData == "676f7a75")
+    {
+        m_long_socket->write(QString("Start.Running\r\n").toUtf8());
+    }
+    else if (readData.contains("is connecting to the server"))
+    {
+        recoverStatus();
+    }
+    else if (readData.startsWith("From server:"))
     {
         QStringList msgList = readData.split("\r\n");
         if (msgList.size() > 2)
@@ -136,7 +161,7 @@ void VideoArea::onLongSocketReadyRead()
                {
                    m_centerAreaRatio = nList[0].toDouble();
                    m_rorationRange = nList[1].toDouble();
-                   ui->test_label->drawArea(m_centerAreaRatio, m_rorationRange);
+                   test_label->drawArea(m_centerAreaRatio, m_rorationRange);
                }
             }
         }
@@ -163,7 +188,7 @@ void VideoArea::onLongSocketReadyRead()
 
                    QRect realRect = QRect(realX, realY, realW, realH);
 
-                   ui->mark_label->drawRect(realRect); //标记画框
+                   mark_label->drawRect(realRect); //标记画框
                }
            }
            else if (item.startsWith("Reach.Target="))
@@ -175,7 +200,7 @@ void VideoArea::onLongSocketReadyRead()
            }
            else if (item.startsWith("Unrecognized color"))
            {
-               ui->mark_label->cleanRect(); //清除标记框
+               mark_label->cleanRect(); //清除标记框
            }
         }
     }
@@ -187,7 +212,7 @@ void VideoArea::onSocketDisconnect()
 }
 
 void VideoArea::onUdpSocketReadyRead()
-{
+{  
     while (udpSocket->hasPendingDatagrams())
     {
         m_frame_count++;
@@ -249,40 +274,79 @@ void VideoArea::selectFinished(const QRect &_rect)
 
 void VideoArea::onActioPortClicked()
 {
-    if (dialog->isHidden())
+    if (portSetupDialog->isHidden())
     {
-        dialog->show();
+        portSetupDialog->show();
     }
 }
 
 void VideoArea::onActionAreaViewClicked(bool flag)
 {
-    ui->test_label->setVisible(flag);
+    test_label->setVisible(flag);
 }
 
 void VideoArea::readConfigFile()
 {
     QSettings iniReader("config.ini",QSettings::IniFormat);
-    QString serverIP = iniReader.value("Record/tcpIp").toString();
-    ui->ip_edit->setText(serverIP);
-    QString tcpPort = iniReader.value("Record/tcpPort").toString();
-    ui->port_edit->setText(tcpPort);
 
-    int udpPort = iniReader.value("Record/udpPort").toInt();
-    dialog->setUdpPort(udpPort);
+    QString tcpPort = iniReader.value("Port/tcpPort").toString();
+    portSetupDialog->setValue(PortSetupDialog::TCP_Port, tcpPort);
+
+    QString udpPort = iniReader.value("Port/udpPort").toString();
+    portSetupDialog->setValue(PortSetupDialog::UDP_Port, udpPort);
+
+    iniReader.beginGroup("Address");
+    QStringList addr_key_list, addr_value_list;
+    addr_key_list = iniReader.childKeys();
+    for(int i=0;i<addr_key_list.length();++i)
+    {
+        addr_value_list << iniReader.value(addr_key_list[i]).toString();
+    }
+    iniReader.endGroup();
+    scanIpDialog->loadHistotyAddress(addr_value_list);
 }
 
 void VideoArea::saveConfigFile()
 {
     QSettings iniReader("config.ini",QSettings::IniFormat);
-    iniReader.setValue("Record/tcpIp",ui->ip_edit->text());
-    iniReader.setValue("Record/tcpPort",ui->port_edit->text());
+    iniReader.beginGroup("Address");
+    QStringList addr_key_list, addr_value_list;
+    addr_key_list = iniReader.childKeys();
+    for(int i=0;i<addr_key_list.size();++i)
+    {
+        addr_value_list << iniReader.value(addr_key_list[i]).toString();
+    }
+    if (!addr_value_list.contains(m_server_ip))
+    {
+        if (addr_value_list.size() == 8)
+        {
+           addr_value_list.removeLast();
+        }
+        addr_value_list.insert(0,m_server_ip);
+    }
+    else
+    {
+        for (int i=0; i<addr_value_list.size(); ++i)
+        {
+            if (addr_value_list[i] == m_server_ip)
+            {
+                addr_value_list.move(i,0);
+                break;
+            }
+        }
+    }
+
+    for (int i=0; i<addr_value_list.size(); ++i)
+    {
+        QString nextKey = QString("addr_%1").arg(i+1);
+        iniReader.setValue(nextKey, addr_value_list[i]);
+    }
 }
 
 void VideoArea::recoverStatus()
 {
-    ui->connect_btn->setText("连接");
-    ui->textEdit->append(QString("disconect to %1!").arg(ui->ip_edit->text()));
+    ui->connect_btn->setText(tr("Connect"));
+    ui->textEdit->append(QString("disconect to %1!").arg(m_server_ip));
 
     m_long_socket->disconnect();
     m_long_socket->abort();
@@ -359,3 +423,9 @@ void VideoArea::onActionButtonGroupClicked(int btnID)
     m_long_socket->write(cmd.toUtf8());
 }
 
+void VideoArea::resizeEvent(QResizeEvent *e)
+{
+    test_label->setGeometry(ui->video_label->geometry());
+    mark_label->setGeometry(ui->video_label->geometry());
+    QMainWindow::resizeEvent(e);
+}
