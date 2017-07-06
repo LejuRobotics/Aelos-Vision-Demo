@@ -26,7 +26,7 @@ public:
 
     enum Position{ Unknown, Left, Right, Center };
 
-    enum ActionStatus { Initial, Doing, Finished};
+    enum ActionStatus { Initial, Doing, Finished };
 
     QRect currentMark;   //识别物体的标记框位置
     int actionMode;      //动作模式: 0,手动(测试阶段默认)  1,自动
@@ -36,14 +36,13 @@ public:
 
     void setSelectRect(const QRect &tmp); //标记需要识别的物体
     void openUrl(const QString &ip);
-
     void stop();
+    void setStopEnable(bool flag);
 
 protected:
     virtual void run();
 
 signals:
-    void markChanged(bool);
     void directionChanged(int);
     void sendInfo(const QString &);
 
@@ -53,6 +52,7 @@ public slots:
 private:
     bool getCurrentMark(const vector<Object*> &objList); //获取最接近目标的标记框
     void calculateDirection(); //计算物体方向(左，中，右)
+    bool compareMark();
 
 private:
     bool isPause;
@@ -70,6 +70,13 @@ private:
 
     QUdpSocket *udpSocket;
     QByteArray byte;
+
+    bool m_bStopEnable;
+    int m_stop_size;
+    bool isArrive;
+    int m_curSize;
+
+    int m_action_order;
 };
 
 #endif // VIDEOCONTROL_H

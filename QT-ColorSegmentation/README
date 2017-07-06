@@ -1,0 +1,8 @@
+apt-get install git cmake qtcreator libqt4-dev opencv-dev python-opencv python-pip xvfb x11vnc
+pip intall flask
+
+#2017-06-19
+1. 目前程序改为在window上运行，从nanopi上的mjpg-stream的网络视频流中读取摄像头数据,在工程目录下的
+mjpg-stream文件夹中的start.sh脚本文件中记录了修改的输出流的分辨率,fps和图片质量.
+2. 如果windows调试程序，需要配置环境变量，将opencv的动态库文件和vlc的库文件添加到系统环境变量，或者
+将库文件放到可执行程序下，在工程目录的.pro文件中也有具体说明.

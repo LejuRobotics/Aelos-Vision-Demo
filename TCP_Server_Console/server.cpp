@@ -22,24 +22,24 @@ int g_right_l_command = 6;  //右转指令(大幅度)
 server::server()
 {
     isOPenSerial = false;
+    m_connection_count = 0;
 
     readConfigFile();
 
     serialPort = new SerialPort(this);
 
     videoControl = new VideoControl(this);
-    connect(videoControl,SIGNAL(markChanged(bool)),this,SLOT(onMarkChanged(bool)));
-    connect(videoControl,SIGNAL(directionChanged(int)),this,SLOT(onDirectionChanged(int)));
-    connect(videoControl,SIGNAL(sendInfo(QString)), this, SLOT(onSendInfo(QString)));
 
     QNetworkProxyFactory::setUseSystemConfiguration(false);
     tcpServer = new QTcpServer(this);
-    connect(tcpServer,SIGNAL(newConnection()),this,SLOT(onNewConnection()));
-
-    connect(serialPort, SIGNAL(actionFinished()), this, SLOT(onActionFinished()));
 
     m_timer = new QTimer(this);
     m_timer->setSingleShot(true);
+
+    connect(tcpServer,SIGNAL(newConnection()),this,SLOT(onNewConnection()));
+    connect(serialPort, SIGNAL(actionFinished()), this, SLOT(onActionFinished()));
+    connect(videoControl,SIGNAL(directionChanged(int)),this,SLOT(onDirectionChanged(int)));
+    connect(videoControl,SIGNAL(sendInfo(QString)), this, SLOT(onSendInfo(QString)));
     connect(m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
 }
 
@@ -64,12 +64,76 @@ void server::startListen()
     isOPenSerial = serialPort->openSerilPort(); //打开串口
 }
 
+//当有新的socket连接
+void server::onNewConnection()
+{
+    m_connection_count++;
+    if (m_connection_count == 1)
+    {
+        tcpSocket = tcpServer->nextPendingConnection();
+        connect(tcpSocket,SIGNAL(readyRead()),this,SLOT(onSocketRead()));
+        connect(tcpSocket,SIGNAL(error(QAbstractSocket::SocketError)),this,SLOT(disPlayError(QAbstractSocket::SocketError)));
+
+        m_client_ip = tcpSocket->peerAddress().toString();
+        WriteMsg(QString("Connect to server successful\r\n").toUtf8()); //连接成功，返回信息
+    }
+    else
+    {
+        QTcpSocket *tempSocket = tcpServer->nextPendingConnection();
+        connect(tempSocket,SIGNAL(error(QAbstractSocket::SocketError)),this,SLOT(disPlayError(QAbstractSocket::SocketError)));
+
+        QString msg = QString("%1 is connecting to the server\r\n").arg(m_client_ip);
+        QByteArray outBlock;
+        QDataStream out(&outBlock,QIODevice::WriteOnly);
+        out.setVersion(QDataStream::Qt_5_3);
+        out<<msg.toUtf8();
+        tempSocket->write(outBlock);
+    }
+}
+
+//接收数据
+void server::onSocketRead()
+{   
+    QString receive_data;
+    receive_data = QString::fromUtf8(tcpSocket->readAll());
+    qDebug()<< "receive: "<< receive_data;
+    if (receive_data == "95f41ce1")
+    {
+        WriteMsg(QString("676f7a75").toUtf8());
+    }
+    else if (receive_data.startsWith("Start.Running"))
+    {
+        QString retMsg("From server: \r\n");
+        retMsg.append(QString("Camera.Resolution=%1x%2\r\n").arg(g_frame_width).arg(g_frame_height));
+        retMsg.append(QString("Area.Position=%1,%2\r\n").arg(g_horizontal_ratio).arg(g_rotation_range));
+        retMsg.append(QString("Open %1 %2 !\r\n").arg(g_serial_name).arg(isOPenSerial ? "successfully" : "failed"));
+        retMsg.append("End\r\n");
+        WriteMsg(retMsg.toUtf8()); //连接成功，返回信息
+
+        videoControl->openUrl(tcpSocket->peerAddress().toString()); //开启线程，读取摄像头
+    }
+    else
+    {
+        if (parseData(receive_data))
+        {
+            m_result_msg = QString("send ok (\"%1\")\r\n").arg(m_result_msg);
+        }
+        else
+        {
+            m_result_msg = QString("send error (\"%1\")\r\n").arg(m_result_msg);
+        }
+        //接收成功，返回结果
+        WriteMsg(m_result_msg.toUtf8());
+    }
+}
+
 bool server::parseData(const QString &msg)
 {
     bool isOk = false;
     if (msg.isEmpty())
         return isOk;
 
+    m_result_msg = msg;
     if (msg.startsWith("set Select.Rect="))
     {
         QStringList posList = msg.mid(msg.indexOf("=")+1).split(",");
@@ -83,6 +147,12 @@ bool server::parseData(const QString &msg)
             videoControl->setSelectRect(temp);
             isOk = true;
         }
+    }
+    else if (msg.startsWith("set Stop.Enable="))
+    {
+        int ret = msg.mid(msg.indexOf("=")+1).toInt();
+        videoControl->setStopEnable(ret);
+        isOk = true;
     }
     else if(msg.startsWith("set Robot.Action="))
     {
@@ -125,78 +195,82 @@ void server::WriteMsg(const QByteArray &msg)
     QByteArray outBlock;
     QDataStream out(&outBlock,QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_5_3);
-
-    out<<(qint64)0;
     out<<msg;
-    out.device()->seek(0);
-    out<<(qint64)(outBlock.size()-sizeof(qint64));
-
     tcpSocket->write(outBlock);
-}
-
-//当有新的socket连接
-void server::onNewConnection()
-{
-    tcpSocket = tcpServer->nextPendingConnection();
-    connect(tcpSocket,SIGNAL(readyRead()),this,SLOT(onSocketRead()));
-    connect(tcpSocket,SIGNAL(error(QAbstractSocket::SocketError)),this,SLOT(disPlayError(QAbstractSocket::SocketError)));
-
-    QString retMsg("From server: \r\n");
-    retMsg.append(QString("Camera.Resolution=%1x%2\r\n").arg(g_frame_width).arg(g_frame_height));
-    retMsg.append(QString("Area.Position=%1,%2\r\n").arg(g_horizontal_ratio).arg(g_rotation_range));
-    retMsg.append(QString("Open %1 %2 !\r\n").arg(g_serial_name).arg(isOPenSerial ? "successfully" : "failed"));
-    retMsg.append("End\r\n");
-    WriteMsg(retMsg.toUtf8()); //连接成功，返回信息
-
-    videoControl->openUrl(tcpSocket->peerAddress().toString()); //开启线程，读取摄像头
-}
-
-//接收数据
-void server::onSocketRead()
-{   
-    QString receive_data,result_data;
-    receive_data = QString(tcpSocket->readAll());
-    qDebug()<< "receive: "<< receive_data;
-    if (parseData(receive_data))
-    {
-        result_data = QString("send successfully !");
-    }
-    else
-    {
-        result_data = QString("Error: invalid commands !");
-    }
-    //接收成功，返回结果
-    WriteMsg(result_data.toUtf8());
 }
 
 //打印错误信息
 void server::disPlayError(QAbstractSocket::SocketError)
 {
-    qDebug()<<tcpSocket->errorString();
-    tcpSocket->close();
-    videoControl->stop();
-}
-
-void server::onMarkChanged(bool flag)
-{    
-    QString result_data;
-    if (flag)
+    QTcpSocket *socketObj = qobject_cast<QTcpSocket*>(sender());
+    qDebug()<<socketObj->errorString()<<"("<<socketObj->peerAddress().toString()<<")";
+    socketObj->abort();
+    if (socketObj == tcpSocket)
     {
-        result_data = QString("get Mark.Rect=%1,%2,%3,%4")
-                .arg(videoControl->currentMark.x())
-                .arg(videoControl->currentMark.y())
-                .arg(videoControl->currentMark.width())
-                .arg(videoControl->currentMark.height());
+        videoControl->stop();
     }
-    else
-    {
-        result_data = QString("cannot find Mark");
-    }
-
-    WriteMsg(result_data.toUtf8());
+    m_connection_count--;
 }
 
 void server::onDirectionChanged(int val)
+{
+    WriteSerial(val);
+}
+
+void server::onActionFinished()
+{   
+    videoControl->setRebotStatus(VideoControl::Finished);
+    m_timer->start(g_time_count);
+}
+
+void server::onTimeout()
+{
+    videoControl->isReady = true;
+}
+
+void server::onSendInfo(const QString &msg)
+{
+    WriteMsg(msg.toUtf8());
+}
+
+void server::readConfigFile()
+{
+    QSettings iniReader("setup.ini",QSettings::IniFormat);
+    g_serial_name = iniReader.value("Serial/name").toString();
+    g_baud_rate = iniReader.value("Serial/baudRate").toInt();
+    g_frame_width = iniReader.value("Resolution/width").toInt();
+    g_frame_height = iniReader.value("Resolution/height").toInt();   
+    g_listen_port = iniReader.value("Port/tcpPort").toInt();
+    g_broadcast_port = iniReader.value("Port/udpPort").toInt();
+    g_frame_quality = iniReader.value("Debug/frameQuality").toInt();
+    g_horizontal_ratio = iniReader.value("Debug/horizontalRatio").toDouble();
+    g_object_ratio = iniReader.value("Debug/objectRatio").toDouble();
+    g_rotation_range = iniReader.value("Debug/rotationRange").toDouble();
+    g_time_count = iniReader.value("Debug/timeCount").toInt();
+    g_forward_command = iniReader.value("Debug/forwardCommand").toInt();
+    g_left_s_command = iniReader.value("Debug/sLeftCommand").toInt();
+    g_right_s_command = iniReader.value("Debug/sRightCommand").toInt();
+    g_left_l_command = iniReader.value("Debug/lLeftCommand").toInt();
+    g_right_l_command = iniReader.value("Debug/lRightCommand").toInt();
+
+    qDebug()<< " serialName: "<< g_serial_name << "\n"
+            << "baudRate: " << g_baud_rate << "\n"
+            << QString("resolution: %1x%2").arg(g_frame_width).arg(g_frame_height) << "\n"
+            << "g_listen_port: " << g_listen_port << "\n"
+            << "g_broadcast_port: " << g_broadcast_port << "\n"
+            << "g_frame_quality: " << g_frame_quality << "\n"
+            << "g_horizontal_ratio: " << g_horizontal_ratio << "\n"
+            << "g_object_ratio: " << g_object_ratio << "\n"
+            << "g_rotation_range: " << g_rotation_range << "\n"
+            << "g_time_count: " << g_time_count << "\n"
+            << "g_forward_command: " << g_forward_command << "\n"
+            << "g_left_s_command: " << g_left_s_command << "\n"
+            << "g_right_s_command: " << g_right_s_command << "\n"
+            << "g_left_l_command: " << g_left_l_command << "\n"
+            << "g_right_l_command: " << g_right_l_command << "\n";
+}
+
+void server::WriteSerial(int val)
 {
     int bufferSize = 9;
     unsigned char serialnum[] = {0xd3,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x31};
@@ -267,59 +341,6 @@ void server::onDirectionChanged(int val)
         qDebug("start action: move,%d",val);
         char* buf = (char*)(&serialnum);
         serialPort->sendMsg(buf,bufferSize);
-//        QTimer::singleShot(g_time_count, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
+//        QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
     }
-}
-
-void server::onActionFinished()
-{   
-    videoControl->setRebotStatus(VideoControl::Finished);
-    m_timer->start(g_time_count);
-}
-
-void server::onTimeout()
-{
-    videoControl->isReady = true;
-}
-
-void server::onSendInfo(const QString &msg)
-{
-    WriteMsg(msg.toUtf8());
-}
-
-void server::readConfigFile()
-{
-    QSettings iniReader("setup.ini",QSettings::IniFormat);
-    g_serial_name = iniReader.value("Serial/name").toString();
-    g_baud_rate = iniReader.value("Serial/baudRate").toInt();
-    g_frame_width = iniReader.value("Resolution/width").toInt();
-    g_frame_height = iniReader.value("Resolution/height").toInt();   
-    g_listen_port = iniReader.value("Port/tcpPort").toInt();
-    g_broadcast_port = iniReader.value("Port/udpPort").toInt();
-    g_frame_quality = iniReader.value("Debug/frameQuality").toInt();
-    g_horizontal_ratio = iniReader.value("Debug/horizontalRatio").toDouble();
-    g_object_ratio = iniReader.value("Debug/objectRatio").toDouble();
-    g_rotation_range = iniReader.value("Debug/rotationRange").toDouble();
-    g_time_count = iniReader.value("Debug/timeCount").toInt();
-    g_forward_command = iniReader.value("Debug/forwardCommand").toInt();
-    g_left_s_command = iniReader.value("Debug/sLeftCommand").toInt();
-    g_right_s_command = iniReader.value("Debug/sRightCommand").toInt();
-    g_left_l_command = iniReader.value("Debug/lLeftCommand").toInt();
-    g_right_l_command = iniReader.value("Debug/lRightCommand").toInt();
-
-    qDebug()<< " serialName: "<< g_serial_name << "\n"
-            << "baudRate: " << g_baud_rate << "\n"
-            << QString("resolution: %1x%2").arg(g_frame_width).arg(g_frame_height) << "\n"
-            << "g_listen_port: " << g_listen_port << "\n"
-            << "g_broadcast_port: " << g_broadcast_port << "\n"
-            << "g_frame_quality: " << g_frame_quality << "\n"
-            << "g_horizontal_ratio: " << g_horizontal_ratio << "\n"
-            << "g_object_ratio: " << g_object_ratio << "\n"
-            << "g_rotation_range: " << g_rotation_range << "\n"
-            << "g_time_count: " << g_time_count << "\n"
-            << "g_forward_command: " << g_forward_command << "\n"
-            << "g_left_s_command: " << g_left_s_command << "\n"
-            << "g_right_s_command: " << g_right_s_command << "\n"
-            << "g_left_l_command: " << g_left_l_command << "\n"
-            << "g_right_l_command: " << g_right_l_command << "\n";
 }
