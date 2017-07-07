@@ -24,5 +24,6 @@ extern int g_left_s_command;   //左转指令(小幅度)
 extern int g_right_s_command;  //右转指令(小幅度)
 extern int g_left_l_command;   //左转指令(大幅度)
 extern int g_right_l_command;  //右转指令(大幅度)
+extern int g_connect_net_wait_time;
 
 #endif // GLOBAL_VAR_H

@@ -12,6 +12,7 @@ ScanIpDiaog::ScanIpDiaog(QWidget *parent) :
     m_current_status = Inital;
     m_scan_finish_count = 0;
     m_connect_finish_count = 0;
+    m_tcp_port = 0;
 
     ui->mainLayout->setSizeConstraint(QLayout::SetFixedSize);
 
@@ -36,8 +37,6 @@ ScanIpDiaog::ScanIpDiaog(QWidget *parent) :
         connect(threadList[i], SIGNAL(connectFailed(QString)), this, SLOT(onConnectFailed(QString)));
         connect(threadList[i], SIGNAL(scanFinished(int)), this, SLOT(onScanFinished(int)));
     }
-
-    init();
 }
 
 ScanIpDiaog::~ScanIpDiaog()
@@ -45,34 +44,50 @@ ScanIpDiaog::~ScanIpDiaog()
     delete ui;
 }
 
-QString ScanIpDiaog::localIP4() const
+void ScanIpDiaog::setTcpPort(int port)
 {
-    QString ipAddress;
-    QList<QHostAddress> ipAddressesList = QNetworkInterface::allAddresses();
-    // use the first non-localhost IPv4 address
-    for (int i = 0; i < ipAddressesList.size(); ++i) {
-        if (ipAddressesList.at(i) != QHostAddress::LocalHost &&
-                ipAddressesList.at(i).toIPv4Address()) {
-            ipAddress = ipAddressesList.at(i).toString();
-            break;
+    for (int i=0; i<g_thread_count; ++i)
+    {
+        threadList[i]->setPort(port);
+    }
+}
+
+QString ScanIpDiaog::localIP4()
+{
+    QList<QNetworkInterface> interfaceList = QNetworkInterface::allInterfaces();
+    foreach(QNetworkInterface interfaceItem, interfaceList)
+    {
+        if(interfaceItem.flags().testFlag(QNetworkInterface::IsUp)
+                &&interfaceItem.flags().testFlag(QNetworkInterface::IsRunning)
+                &&interfaceItem.flags().testFlag(QNetworkInterface::CanBroadcast)
+                &&interfaceItem.flags().testFlag(QNetworkInterface::CanMulticast)
+                &&!interfaceItem.flags().testFlag(QNetworkInterface::IsLoopBack)
+                &&interfaceItem.hardwareAddress()!="00:50:56:C0:00:01"
+                &&interfaceItem.hardwareAddress()!="00:50:56:C0:00:08")
+        {
+            QList<QNetworkAddressEntry> addressEntryList=interfaceItem.addressEntries();
+            foreach(QNetworkAddressEntry addressEntryItem, addressEntryList)
+            {
+                if(addressEntryItem.ip().protocol()==QAbstractSocket::IPv4Protocol)
+                {
+                    return addressEntryItem.ip().toString();
+                }
+            }
         }
     }
-    // if we did not find one, use IPv4 localhost
-    if (ipAddress.isEmpty())
-        ipAddress = QHostAddress(QHostAddress::LocalHost).toString();
-    return ipAddress;
+    return QString();
 }
 
 void ScanIpDiaog::init()
 {
     QString local_ip = localIP4();
-//    qDebug()<< "local ip: "<<local_ip;
+    qDebug()<< "local ip: "<<local_ip;
     QStringList ip_splite_list = local_ip.split(".");
     if (ip_splite_list.size() < 4)
         return;
 
     int ip_third_val = ip_splite_list[2].toInt();
-//    qDebug()<< "ip_third_val: "<<ip_third_val;
+    qDebug()<< "ip_third_val: "<<ip_third_val;
     threadList[0]->setScanRange(ip_third_val,2,64);
     threadList[1]->setScanRange(ip_third_val,65,128);
     threadList[2]->setScanRange(ip_third_val,129,191);
@@ -83,6 +98,7 @@ void ScanIpDiaog::startScan()
 {
     if (m_current_status == Inital)
     {
+        init();
         for (int i=0; i<g_thread_count; ++i)
         {
             threadList[i]->startScan();
@@ -123,6 +139,7 @@ void ScanIpDiaog::onScanFinished(int sec)
     ui->textBrowser->append(QString("The time elapsed %1 s\n").arg(sec));
     m_scan_finish_count = 0;
     m_current_status = Finished;
+    ui->reStart_btn->setText("ReStart");
     ui->reStart_btn->setEnabled(true);
 }
 

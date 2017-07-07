@@ -163,6 +163,7 @@
     </property>
     <addaction name="action_Port"/>
     <addaction name="action_Area"/>
+    <addaction name="action_Server_wifi"/>
    </widget>
    <addaction name="menu"/>
   </widget>
@@ -181,6 +182,11 @@
    </property>
    <property name="text">
     <string>&amp;Debug view</string>
+   </property>
+  </action>
+  <action name="action_Server_wifi">
+   <property name="text">
+    <string>&amp;Server wifi</string>
    </property>
   </action>
  </widget>

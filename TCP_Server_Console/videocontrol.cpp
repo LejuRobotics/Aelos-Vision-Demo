@@ -65,6 +65,7 @@ void VideoControl::setStopEnable(bool flag)
     {
         m_stop_size = 0;
         isArrive = false;
+        actionStatus = Initial;
     }
 }
 

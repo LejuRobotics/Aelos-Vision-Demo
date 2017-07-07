@@ -1,6 +1,5 @@
 #include "server.h"
 #include <QDebug>
-#include <QNetworkProxyFactory>
 
 QString g_serial_name = "/dev/ttyS1"; //串口名称
 int g_baud_rate = 9600;     //波特率
@@ -18,6 +17,7 @@ int g_left_s_command = 3;   //左转指令(小幅度)
 int g_right_s_command = 4;  //右转指令(小幅度)
 int g_left_l_command = 5;   //左转指令(大幅度)
 int g_right_l_command = 6;  //右转指令(大幅度)
+int g_connect_net_wait_time = 20000;
 
 server::server()
 {
@@ -35,6 +35,9 @@ server::server()
 
     m_timer = new QTimer(this);
     m_timer->setSingleShot(true);
+
+    m_netTimer = new QTimer(this);
+    connect(m_netTimer, SIGNAL(timeout()), this, SLOT(onNetTimeout()));
 
     connect(tcpServer,SIGNAL(newConnection()),this,SLOT(onNewConnection()));
     connect(serialPort, SIGNAL(actionFinished()), this, SLOT(onActionFinished()));
@@ -62,6 +65,8 @@ void server::startListen()
     qDebug("Start listen %d\n", g_listen_port);
 
     isOPenSerial = serialPort->openSerilPort(); //打开串口
+
+    m_netTimer->start(g_connect_net_wait_time);
 }
 
 //当有新的socket连接
@@ -186,6 +191,15 @@ bool server::parseData(const QString &msg)
             }
         }
     }
+    else if (msg.startsWith("set Wifi.Settings="))
+    {
+        QStringList msgList = msg.mid(msg.indexOf("=")+1).split(",");
+        if (msgList.size() == 2)
+        {
+            modifyNetworkFile(msgList[0],msgList[1]);
+            isOk = true;
+        }
+    }
 
     return isOk;
 }
@@ -233,6 +247,12 @@ void server::onSendInfo(const QString &msg)
     WriteMsg(msg.toUtf8());
 }
 
+void server::onNetTimeout()
+{
+    qDebug()<< "-===start Ping";
+    pingNetwork();
+}
+
 void server::readConfigFile()
 {
     QSettings iniReader("setup.ini",QSettings::IniFormat);
@@ -252,6 +272,7 @@ void server::readConfigFile()
     g_right_s_command = iniReader.value("Debug/sRightCommand").toInt();
     g_left_l_command = iniReader.value("Debug/lLeftCommand").toInt();
     g_right_l_command = iniReader.value("Debug/lRightCommand").toInt();
+    g_connect_net_wait_time = iniReader.value("Debug/waitConnectNetTime").toInt();
 
     qDebug()<< " serialName: "<< g_serial_name << "\n"
             << "baudRate: " << g_baud_rate << "\n"
@@ -267,7 +288,39 @@ void server::readConfigFile()
             << "g_left_s_command: " << g_left_s_command << "\n"
             << "g_right_s_command: " << g_right_s_command << "\n"
             << "g_left_l_command: " << g_left_l_command << "\n"
-            << "g_right_l_command: " << g_right_l_command << "\n";
+            << "g_right_l_command: " << g_right_l_command << "\n"
+            << "g_connect_net_wait_time: " << g_connect_net_wait_time << "\n";
+}
+
+void server::modifyNetworkFile(const QString &id, const QString &password)
+{
+    QFile file("./network/wifi/interfaces");
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    {
+        qDebug("open file failed !");
+        return;
+    }
+
+    QString newData = QString("# interfaces(5) file used by ifup(8) and ifdown(8)\n"
+                              "# Include files from /etc/network/interfaces.d:\n"
+                              "source-directory /etc/network/interfaces.d\n"
+                              "\n"
+                              "auto lo\n"
+                              "iface lo inet loopback\n"
+                              "\n"
+                              "allow-hotplug wlan0\n"
+                              "iface wlan0 inet dhcp\n"
+                              "wpa-ssid \"%1\"\n"
+                              "wpa-psk \"%2\"\n").arg(id).arg(password);
+
+    file.write(newData.toUtf8());
+    file.close();
+
+    QSettings iniReader("network/wifi.ini",QSettings::IniFormat);
+    iniReader.setValue("Configure/mode",0);
+
+    qDebug()<<"--===start reset network===---";
+    system("network/wifi/wifi_setup.sh");
 }
 
 void server::WriteSerial(int val)
@@ -343,4 +396,110 @@ void server::WriteSerial(int val)
         serialPort->sendMsg(buf,bufferSize);
 //        QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
     }
+}
+
+void server::pingNetwork()
+{
+    m_netTimer->stop();
+//    QString webName("www.baidu.com");
+//    QProcess *cmd = new QProcess;
+//#ifdef Q_OS_WIN
+//    QString strArg = "ping " + webName + " -n 1 -w 200";
+//#else
+//    QString strArg = "ping -s 1 -c 1 " + webName;
+//#endif
+//    cmd->start(strArg);
+//    cmd->waitForReadyRead();
+//    cmd->waitForFinished();
+//    QByteArray ba = cmd->readAll();
+//    qDebug()<<"ping "<< webName << "--Ret: " << QString::fromLocal8Bit(ba);
+
+//    delete cmd;
+//    cmd = NULL;
+
+//    QSettings iniReader("network/wifi.ini",QSettings::IniFormat);
+//    QString wifi_mode = iniReader.value("Configure/mode").toString();
+//    if (ba.isEmpty() && wifi_mode == "0") //cannot connect to network
+//    {
+//        qDebug()<< "connected to the network falied";
+
+//        iniReader.setValue("Configure/mode",1);
+
+//        system("network/wifi_ap/ap_setup.sh");  //excute shell, replace network file (/etc/network/interfaces) and reboot
+//                                                //if successful, nanopi will set to Wifi-Ap mode
+//    }
+
+    QString localIp = getLocalIP4Address();
+    qDebug()<< "localIp: " << localIp;
+    QSettings iniReader("network/wifi.ini",QSettings::IniFormat);
+    QString wifi_mode = iniReader.value("Configure/mode").toString();
+    if (localIp.isEmpty())
+    {
+        if (wifi_mode == "0")
+        {
+            qDebug()<< "Cannot get ip address"
+                    << "\n"
+                    << "---===start reset to Wifi AP mode===---";
+            iniReader.setValue("Configure/mode",1);
+            system("network/wifi_ap/ap_setup.sh"); //excute shell, replace network file (/etc/network/interfaces) and reboot,
+                                                  //if successful, nanopi will set to Wifi-Ap mode
+        }
+    }
+    else
+    {
+        QString routerIp = localIp.mid(0,localIp.lastIndexOf(".")+1) + "1";
+        qDebug()<< "routerIp: "<< routerIp;
+        QProcess *cmd = new QProcess;
+#ifdef Q_OS_WIN
+        QString strArg = "ping " + routerIp + " -n 1 -w 200";
+#else
+        QString strArg = "ping -s 1 -c 1 " + routerIp;
+#endif
+        cmd->start(strArg);
+        cmd->waitForReadyRead();
+        cmd->waitForFinished();
+        QByteArray ba = cmd->readAll();
+        qDebug()<<"--==>Ret: " << QString::fromLocal8Bit(ba);
+
+        delete cmd;
+        cmd = NULL;
+
+        if (ba.isEmpty())
+        {
+            if (wifi_mode == "0")
+            {
+                qDebug()<< "Cannot Ping through router"
+                        << "\n"
+                        << "---===start reset to Wifi AP mode===---";
+                iniReader.setValue("Configure/mode",1);
+                system("network/wifi_ap/ap_setup.sh");
+            }
+        }
+    }
+}
+
+QString server::getLocalIP4Address() const
+{
+    QList<QNetworkInterface> interfaceList = QNetworkInterface::allInterfaces();
+    foreach(QNetworkInterface interfaceItem, interfaceList)
+    {
+        if(interfaceItem.flags().testFlag(QNetworkInterface::IsUp)
+                &&interfaceItem.flags().testFlag(QNetworkInterface::IsRunning)
+                &&interfaceItem.flags().testFlag(QNetworkInterface::CanBroadcast)
+                &&interfaceItem.flags().testFlag(QNetworkInterface::CanMulticast)
+                &&!interfaceItem.flags().testFlag(QNetworkInterface::IsLoopBack)
+                &&interfaceItem.hardwareAddress()!="00:50:56:C0:00:01"
+                &&interfaceItem.hardwareAddress()!="00:50:56:C0:00:08")
+        {
+            QList<QNetworkAddressEntry> addressEntryList=interfaceItem.addressEntries();
+            foreach(QNetworkAddressEntry addressEntryItem, addressEntryList)
+            {
+                if(addressEntryItem.ip().protocol()==QAbstractSocket::IPv4Protocol)
+                {
+                    return addressEntryItem.ip().toString();
+                }
+            }
+        }
+    }
+    return QString();
 }

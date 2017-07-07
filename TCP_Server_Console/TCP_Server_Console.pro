@@ -7,6 +7,8 @@
 QT       += core network serialport
 QT       += gui
 
+CONFIG += c++11
+
 TARGET = TCP_Server_Console
 CONFIG   += console
 CONFIG   -= app_bundle

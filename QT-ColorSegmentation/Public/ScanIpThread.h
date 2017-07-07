@@ -10,6 +10,7 @@ public:
     explicit ScanIpThread(QObject *parent = 0);
     ~ScanIpThread();
 
+    void setPort(int port);
     void setScanRange(int third, int min, int max);
     void startScan();
     void stop();
@@ -23,6 +24,9 @@ protected:
     virtual void run() Q_DECL_OVERRIDE;
 
 private:
+    int m_port;
+    int m_wait_connected_time;
+    int m_wait_read_time;
     QStringList m_original_list;
     QStringList m_addr_list;
     QMutex m_mutex;
