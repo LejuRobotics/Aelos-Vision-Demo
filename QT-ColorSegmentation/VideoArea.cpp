@@ -32,6 +32,7 @@ VideoArea::VideoArea(QWidget *parent) :
 
     connect(ui->action_Port, SIGNAL(triggered(bool)), this, SLOT(onActioPortClicked()));
     connect(ui->action_Area, SIGNAL(toggled(bool)), this, SLOT(onActionAreaViewClicked(bool)));
+    connect(ui->action_Server_wifi, SIGNAL(triggered(bool)), this, SLOT(onActionServerWifiClicked()));
 
     radio_btn_group = new QButtonGroup(this);
     radio_btn_group->addButton(ui->auto_radio,0);
@@ -50,6 +51,9 @@ VideoArea::VideoArea(QWidget *parent) :
     scanIpDialog->hide();
     connect(scanIpDialog, SIGNAL(startConnected(QString)), this, SLOT(onStartConnected(QString)));
 
+    serverWifiDialog = new ServerWifiSettings(this);
+    connect(serverWifiDialog, SIGNAL(wifiChanged(QString,QString)), this, SLOT(onWifiChanged(QString,QString)));
+
     QNetworkProxyFactory::setUseSystemConfiguration(false);
     m_long_socket = new QTcpSocket(this);
     in.setDevice(m_long_socket);
@@ -67,6 +71,11 @@ VideoArea::VideoArea(QWidget *parent) :
 VideoArea::~VideoArea()
 {
     delete ui;
+}
+
+void VideoArea::WriteData(const QByteArray &msg)
+{
+    m_long_socket->write(msg);
 }
 
 void VideoArea::on_connect_btn_clicked()
@@ -130,11 +139,11 @@ void VideoArea::onLongSocketReadyRead()
 
     if (readData.startsWith("Connect to server successful"))
     {
-        m_long_socket->write(QString("95f41ce1").toUtf8());
+        WriteData(QString("95f41ce1").toUtf8());
     }
     else if (readData == "676f7a75")
     {
-        m_long_socket->write(QString("Start.Running\r\n").toUtf8());
+        WriteData(QString("Start.Running\r\n").toUtf8());
     }
     else if (readData.contains("is connecting to the server"))
     {
@@ -267,7 +276,7 @@ void VideoArea::selectFinished(const QRect &_rect)
         QString msg = QString("set Select.Rect=%1,%2,%3,%4").
                 arg(curRect.x()).arg(curRect.y()).
                 arg(curRect.width()).arg(curRect.height());
-        m_long_socket->write(msg.toUtf8());
+        WriteData(msg.toUtf8());
         ui->textEdit->append(msg);
     }
 }
@@ -285,12 +294,18 @@ void VideoArea::onActionAreaViewClicked(bool flag)
     test_label->setVisible(flag);
 }
 
+void VideoArea::onActionServerWifiClicked()
+{
+    serverWifiDialog->exec();
+}
+
 void VideoArea::readConfigFile()
 {
     QSettings iniReader("config.ini",QSettings::IniFormat);
 
     QString tcpPort = iniReader.value("Port/tcpPort").toString();
     portSetupDialog->setValue(PortSetupDialog::TCP_Port, tcpPort);
+    scanIpDialog->setTcpPort(tcpPort.toInt());
 
     QString udpPort = iniReader.value("Port/udpPort").toString();
     portSetupDialog->setValue(PortSetupDialog::UDP_Port, udpPort);
@@ -376,7 +391,7 @@ void VideoArea::on_record_btn_clicked()
 {
     ui->record_btn->setEnabled(false);
     QString cmd("set Stop.Enable=1");
-    m_long_socket->write(cmd.toUtf8());
+    WriteData(cmd.toUtf8());
     int curSize = m_original_rect.width()*m_original_rect.height();
     ui->textEdit->append(QString("Record size: %1\r\n").arg(curSize));
 }
@@ -385,7 +400,7 @@ void VideoArea::on_reset_btn_clicked()
 {
     ui->record_btn->setEnabled(true);
     QString cmd("set Stop.Enable=0");
-    m_long_socket->write(cmd.toUtf8());
+    WriteData(cmd.toUtf8());
 }
 
 void VideoArea::onRadioGroupClicked(int btnID, bool checked)
@@ -413,14 +428,20 @@ void VideoArea::onRadioGroupClicked(int btnID, bool checked)
             break;
         }
         if (!cmd.isEmpty())
-           m_long_socket->write(cmd.toUtf8());
+           WriteData(cmd.toUtf8());
     }
 }
 
 void VideoArea::onActionButtonGroupClicked(int btnID)
 {
     QString cmd = QString("Move,%1").arg(btnID);
-    m_long_socket->write(cmd.toUtf8());
+    WriteData(cmd.toUtf8());
+}
+
+void VideoArea::onWifiChanged(const QString &userName, const QString &password)
+{
+    QString msg = QString("set Wifi.Settings=%1,%2").arg(userName).arg(password);
+    WriteData(msg.toUtf8());
 }
 
 void VideoArea::resizeEvent(QResizeEvent *e)

@@ -2,6 +2,9 @@
 
 ScanIpThread::ScanIpThread(QObject *parent) : QThread(parent)
 {
+    m_port = 0;
+    m_wait_connected_time = 500;
+    m_wait_read_time = 3000;
     m_bStopped = false;
 }
 
@@ -13,9 +16,14 @@ ScanIpThread::~ScanIpThread()
         this->terminate();
 }
 
+void ScanIpThread::setPort(int port)
+{
+    m_port = port;
+}
 
 void ScanIpThread::setScanRange(int third, int min, int max)
 {
+    m_original_list.clear();
     for (int i=min; i<=max; i++)
     {
         QString addr = QString("192.168.%1.%2").arg(third).arg(i);
@@ -59,15 +67,15 @@ void ScanIpThread::run()
         QString nextAddr = m_addr_list.first();
         m_addr_list.removeFirst();
         socket.abort();
-        socket.connectToHost(nextAddr, 7980);
-        if (!socket.waitForConnected(500))
+        socket.connectToHost(nextAddr, m_port);
+        if (!socket.waitForConnected(m_wait_connected_time))
         {
             msg = QString("connect to %1 timeout").arg(nextAddr);
             emit connectFailed(msg);
             continue;
         }
 
-        if (!socket.waitForReadyRead(3000))
+        if (!socket.waitForReadyRead(m_wait_read_time))
         {
             msg = QString("%1 wait fot read timeout").arg(nextAddr);
             emit connectFailed(msg);

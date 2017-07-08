@@ -18,7 +18,9 @@ public:
 
     enum Status{ Inital, Scanning, Finished };
 
-    QString localIP4() const; //get the local IP4 address
+    void setTcpPort(int port);
+
+    QString localIP4(); //get the local IP4 address
 
     void init(); // initialize function
 
@@ -59,6 +61,7 @@ private:
 
     Status m_current_status;
 
+    int m_tcp_port;
     int m_scan_finish_count;
     int m_connect_finish_count;
 

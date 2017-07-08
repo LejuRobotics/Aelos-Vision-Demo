@@ -18,18 +18,21 @@ SOURCES += main.cpp\
     Public/painterlabel.cpp\
     Public/ScanIpDiaog.cpp \
     Public/ScanIpThread.cpp \
-    Public/PortSetupDialog.cpp
+    Public/PortSetupDialog.cpp \
+    Public/ServerWifiSettings.cpp
 
 HEADERS += VideoArea.h\
     Public/painterlabel.h\
     precompiled.h \
     Public/ScanIpDiaog.h \
     Public/ScanIpThread.h \
-    Public/PortSetupDialog.h
+    Public/PortSetupDialog.h \
+    Public/ServerWifiSettings.h
 
 FORMS    +=  VideoArea.ui\
     Public/ScanIpDiaog.ui \
-    Public/PortSetupDialog.ui
+    Public/PortSetupDialog.ui \
+    Public/serverwifisettings.ui
 
 PRECOMPILED_HEADER = $$PWD/precompiled.h
 
