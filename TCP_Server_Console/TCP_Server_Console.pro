@@ -15,19 +15,22 @@ CONFIG   -= app_bundle
 
 TEMPLATE = app
 
+PRECOMPILED_HEADER = $$PWD/global_var.h
 
 SOURCES += main.cpp \
     server.cpp \
     SerialPort.cpp \
     Segmenter.cpp \
-    VideoControl.cpp
+    VideoControl.cpp \
+    DiscernColor.cpp
 
 HEADERS += \
     server.h \
     SerialPort.h \
     Segmenter.h \
     VideoControl.h \
-    global_var.h
+    global_var.h \
+    DiscernColor.h
 
 win32 {
 #如果在window下运行，推荐将工程目录下的opencv-win-lib\bin和添加到系统环境变量中，

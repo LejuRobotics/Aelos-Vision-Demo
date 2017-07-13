@@ -1,10 +1,29 @@
+/**
+ * @file       SerialPort.cpp
+ * @version    1.0
+ * @date       2017年07月08日
+ * @author     C_Are
+ * @copyright  Leju
+ *
+ * @brief      串口操作，SerialPort类的cpp文件
+ */
+
 #include "SerialPort.h"
-#include <QDebug>
+
+/**
+ * @brief     SerialPort类的构造函数
+ * @param     parent 父对象
+ */
 
 SerialPort::SerialPort(QObject *parent) : QObject(parent)
 {
     m_serialPort = new QSerialPort(this);
 }
+
+/**
+ * @brief     SerialPort类的析构函数
+ * @details   销毁m_serialPort指针
+ */
 
 SerialPort::~SerialPort()
 {
@@ -14,6 +33,10 @@ SerialPort::~SerialPort()
     }
     delete m_serialPort;
 }
+
+/**
+ * @brief     打开串口
+ */
 
 bool SerialPort::openSerilPort()
 {
@@ -44,10 +67,9 @@ bool SerialPort::openSerilPort()
     return true;
 }
 
-void SerialPort::sendMsg(const QByteArray &msg)
-{
-    m_serialPort->write(msg);
-}
+/**
+ * @brief     向串口写入数据
+ */
 
 void SerialPort::sendMsg(char *msg, int len)
 {
@@ -58,12 +80,11 @@ void SerialPort::sendMsg(char *msg, int len)
     m_serialPort->write(msg,len);
 }
 
-void SerialPort::sendMsg(char *msg)
-{
-    m_serialPort->write(msg,qstrlen(msg));
-}
+/**
+ * @brief     接收串口数据
+ * @details   接收到动作完成的数据后发送actionFinished()信号
+ */
 
-//机器人动作完成后会返回数据包
 void SerialPort::onReadyRead()
 {
     QByteArray ba = m_serialPort->readAll();
@@ -75,6 +96,10 @@ void SerialPort::onReadyRead()
         emit actionFinished(); //发送动作完成信号
     }
 }
+
+/**
+ * @brief     将波特率int值转化为BaudRate枚举类型
+ */
 
 QSerialPort::BaudRate SerialPort::toBaudRate(int rate)
 {

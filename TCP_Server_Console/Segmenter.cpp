@@ -1,5 +1,22 @@
+/**
+ * @file       Segmenter.cpp
+ * @version    1.0
+ * @date       2017年07月08日
+ * @author     C_Are
+ * @copyright  Leju
+ *
+ * @brief      识别颜色类(现在已放到DiscernColor类中实现)，Segmenter类的cpp文件
+ * @details    目前已经将Segmenter类的两个函数放到DiscernColor类中，计算和识别颜色，现在
+ *             全部在DiscernColor类的线程中执行
+ */
+
 #include "Segmenter.h"
-#include <QDebug>
+
+/**
+ * @brief     Segmenter类的构造函数
+ * @param     width  图片宽度
+ * @param     height 图片高度
+ */
 
 Segmenter::Segmenter(int width,int height){
     w = width;
@@ -7,19 +24,32 @@ Segmenter::Segmenter(int width,int height){
 //    memset(colorInfo.channelLUT,0,2*256*sizeof(unsigned int)); 改为在addColor函数里面初始化
 }
 
-void Segmenter::setColor(int colorIndex,int uv,int LUTIndex,bool value) {
-    if(value)
-        colorInfo.channelLUT[uv][LUTIndex] |= (1<<colorIndex);       //set to 1
-    else
-        if((colorInfo.channelLUT[uv][LUTIndex]>>colorIndex)%2)       //if is 1, set to 0
-            colorInfo.channelLUT[uv][LUTIndex] -= (1<<colorIndex);
-}
+//void Segmenter::setColor(int colorIndex,int uv,int LUTIndex,bool value) {
+//    if(value)
+//        colorInfo.channelLUT[uv][LUTIndex] |= (1<<colorIndex);       //set to 1
+//    else
+//        if((colorInfo.channelLUT[uv][LUTIndex]>>colorIndex)%2)       //if is 1, set to 0
+//            colorInfo.channelLUT[uv][LUTIndex] -= (1<<colorIndex);
+//}
+
+/**
+ * @brief     设置图片的大小
+ * @param     width  图片宽度
+ * @param     height 图片高度
+ */
 
 void Segmenter::setRange(int pw, int ph)
 {
     w = pw;
     h = ph;
 }
+
+/**
+ * @brief     添加需要识别的颜色
+ * @param     rgbMean[3]  目标的平均RGB平均色
+ * @param     channelRange[2][2] YUV格式的中U,V的范围
+ */
+
 void Segmenter::addColor(int rgbMean[3],unsigned char channelRange[2][2]) {
     //添加25行和27行，支持重新识别标记的颜色
     memset(colorInfo.channelLUT,0,2*256*sizeof(unsigned int));
@@ -41,6 +71,13 @@ void Segmenter::addColor(int rgbMean[3],unsigned char channelRange[2][2]) {
         colorInfo.channelLUT[1][i] |= (1<<colorIndex);
     colorInfo.counter++;
 }
+
+/**
+ * @brief     计算识别颜色核心函数
+ * @param     source  指向图片的内存
+ * @param     mask 为true则让该像素点变成平均色,为false，则什么都不做
+ */
+
 void Segmenter::segment(unsigned char *source, bool mask){
     static Object *tmpObj = NULL;
     static std::stack<int> pixelStack;

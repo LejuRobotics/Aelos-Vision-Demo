@@ -1,5 +1,22 @@
+/**
+ * @file       VideoArea.cpp
+ * @version    1.0
+ * @date       2017年07月08日
+ * @author     C_Are
+ * @copyright  Leju
+ *
+ * @brief      主窗口，VideoArea类的cpp文件
+ * @details    VideoArea类是主窗口类，可以接收到的摄像头图像，以及与服务端进行tcp通信
+ */
+
 #include "VideoArea.h"
 #include "ui_VideoArea.h"
+
+/**
+ * @brief     VideoArea类的构造函数
+ * @param     parent 父对象
+ * @details   界面初始化，创建udp服务器，以及tcp客户端
+ */
 
 VideoArea::VideoArea(QWidget *parent) :
     QMainWindow(parent),
@@ -11,8 +28,6 @@ VideoArea::VideoArea(QWidget *parent) :
     test_label->hide();
     mark_label = new PaintLabel(ui->centralwidget);
     connect(mark_label,SIGNAL(selectFinished(QRect)),this,SLOT(selectFinished(QRect)));
-
-    ui->horizontalLayout->setSizeConstraint(QLayout::SetFixedSize);
 
     action_btn_group = new QButtonGroup(this);
     btnList << ui->action_btn_1 << ui->action_btn_2 << ui->action_btn_3
@@ -43,54 +58,92 @@ VideoArea::VideoArea(QWidget *parent) :
     camera_height = 240;
     m_centerAreaRatio = 0.4;
     m_rorationRange = 0.25;
+    m_isConnected = false;
 
     portSetupDialog = new PortSetupDialog(this);
     portSetupDialog->hide();
+    connect(portSetupDialog, SIGNAL(udpPortChanged()), this, SLOT(onUdpPortChanged()));
 
     scanIpDialog = new ScanIpDiaog(this);
     scanIpDialog->hide();
-    connect(scanIpDialog, SIGNAL(startConnected(QString)), this, SLOT(onStartConnected(QString)));
+    connect(scanIpDialog, SIGNAL(startConnectTo(QString)), this, SLOT(onStartConnectTo(QString)));
 
     serverWifiDialog = new ServerWifiSettings(this);
     connect(serverWifiDialog, SIGNAL(wifiChanged(QString,QString)), this, SLOT(onWifiChanged(QString,QString)));
 
-    QNetworkProxyFactory::setUseSystemConfiguration(false);
-    m_long_socket = new QTcpSocket(this);
-    in.setDevice(m_long_socket);
-    in.setVersion(QDataStream::Qt_5_3);
+    connectionBox = new ConnectionBox(this);
+    connect(connectionBox, SIGNAL(startConnectTo(QString)), this, SLOT(onStartConnectTo(QString)));
 
-    udpSocket = new QUdpSocket(this);
+    readConfigFile();
 
     m_timer = new QTimer(this);
     connect(m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
     m_frame_count = 0;
 
-    readConfigFile();
+    m_sliderTimer = new QTimer(this);
+    connect(m_sliderTimer, SIGNAL(timeout()), this, SLOT(onSliderTimeout()));
+
+    QNetworkProxyFactory::setUseSystemConfiguration(false);
+    m_long_socket = new QTcpSocket(this);
+    connect(m_long_socket, SIGNAL(readyRead()),this,SLOT(onLongSocketReadyRead()));
+    connect(m_long_socket,SIGNAL(disconnected()), this, SLOT(onSocketDisconnect()));
+
+    udpSocket = new QUdpSocket(this);
+    if (!udpSocket->bind(portSetupDialog->UdpPort()))
+    {
+       ui->textEdit->append(udpSocket->errorString());
+       return;
+    }
+    ui->textEdit->append(QString("Bind %2 successful !").arg(portSetupDialog->UdpPort()));
+    connect(udpSocket,SIGNAL(readyRead()), this, SLOT(onUdpSocketReadyRead()));
 }
+
+/**
+ * @brief     VideoArea类的析构函数
+ * @details   销毁动态创建的ui指针
+ */
 
 VideoArea::~VideoArea()
 {
     delete ui;
 }
 
+/**
+ * @brief     通过已连接的tcp socket发送信息
+ */
+
 void VideoArea::WriteData(const QByteArray &msg)
 {
-    m_long_socket->write(msg);
+    QByteArray outBlock;
+    QDataStream out(&outBlock,QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_5_3);
+    out<<msg;
+    m_long_socket->write(outBlock);
 }
+
+/**
+ * @brief    点击主窗口上的Connect/Disconect按钮执行的槽函数
+ * @details  点击Connect，调取scanIpDialog对话框
+ */
 
 void VideoArea::on_connect_btn_clicked()
 {
     if (ui->connect_btn->text() == tr("Connect"))
     {
-       scanIpDialog->startScan();
+       scanIpDialog->exec();
     }
     else
     {
-        recoverStatus();
+        m_long_socket->abort();
     }
 }
 
-void VideoArea::onStartConnected(const QString &ip)
+/**
+ * @brief    点击scanIpDialog窗口Connect按钮执行的槽函数
+ * @details  连接成功后，服务器会通过udp发送图像，断开连接，服务器（机器人）只是不发送图像，动作继续执行
+ */
+
+void VideoArea::onStartConnectTo(const QString &ip)
 {
     m_server_ip = ip;
     QString msg;
@@ -104,19 +157,6 @@ void VideoArea::onStartConnected(const QString &ip)
     }
 
     ui->connect_btn->setText(tr("Disconnect"));
-
-    connect(m_long_socket, SIGNAL(readyRead()),this,SLOT(onLongSocketReadyRead()));
-    connect(m_long_socket,SIGNAL(disconnected()), this, SLOT(onSocketDisconnect()));
-
-    udpSocket->abort();
-    if (!udpSocket->bind(portSetupDialog->UdpPort()))
-    {
-       ui->textEdit->append(udpSocket->errorString());
-       return;
-    }
-    ui->textEdit->append(QString("Bind %2 successful !").arg(portSetupDialog->UdpPort()));
-    connect(udpSocket,SIGNAL(readyRead()), this, SLOT(onUdpSocketReadyRead()));
-
     ui->record_btn->setEnabled(true);
     ui->reset_btn->setEnabled(true);
     ui->auto_radio->setEnabled(true);
@@ -130,9 +170,15 @@ void VideoArea::onStartConnected(const QString &ip)
     saveConfigFile();
 }
 
+/**
+ * @brief    接收处理tcp消息
+ */
+
 void VideoArea::onLongSocketReadyRead()
 {
     QByteArray message;
+    QDataStream in(m_long_socket);
+    in.setVersion(QDataStream::Qt_5_3);
     in >> message;
     QString readData = QString::fromUtf8(message);
     ui->textEdit->append(readData);
@@ -144,10 +190,11 @@ void VideoArea::onLongSocketReadyRead()
     else if (readData == "676f7a75")
     {
         WriteData(QString("Start.Running\r\n").toUtf8());
+        m_isConnected = true;
     }
     else if (readData.contains("is connecting to the server"))
     {
-        recoverStatus();
+        m_long_socket->abort();
     }
     else if (readData.startsWith("From server:"))
     {
@@ -215,35 +262,81 @@ void VideoArea::onLongSocketReadyRead()
     }
 }
 
+/**
+ * @brief    当tcp socket断开后执行的槽函数
+ */
+
 void VideoArea::onSocketDisconnect()
 {
-    recoverStatus();
+    ui->connect_btn->setText(tr("Connect"));
+    ui->textEdit->append(QString("disconect to %1!").arg(m_server_ip));
+    m_isConnected = false;
+
+    if (m_timer->isActive())
+    {
+        m_timer->stop();
+    }
+    if (!ui->manual_radio->isChecked())
+    {
+        ui->manual_radio->setChecked(true);
+    }
+    for (int i=0; i<btnList.size(); ++i)
+    {
+        btnList[i]->setEnabled(false);
+    }
+    ui->record_btn->setEnabled(false);
+    ui->reset_btn->setEnabled(false);
+    ui->auto_radio->setEnabled(false);
+    ui->manual_radio->setEnabled(false);
 }
 
-void VideoArea::onUdpSocketReadyRead()
+/**
+ * @brief    接收处理udp消息，显示摄像头图像
+ */
+
+void VideoArea:: onUdpSocketReadyRead()
 {  
     while (udpSocket->hasPendingDatagrams())
     {
-        m_frame_count++;
-        if (!m_timer->isActive())
+        QByteArray m_udpReadData;
+        m_udpReadData.resize(udpSocket->pendingDatagramSize());
+        udpSocket->readDatagram(m_udpReadData.data(),m_udpReadData.size());
+
+        QByteArray dataType, dataContent;
+        QDataStream m_udpReadStream(&m_udpReadData, QIODevice::ReadOnly);
+        m_udpReadStream.setVersion(QDataStream::Qt_5_3);
+        m_udpReadStream >> dataType >> dataContent;
+        if (dataType == "IMAGE")
         {
-            m_timer->start(1000);
+            m_load_image.loadFromData(dataContent);
+            if (m_load_image.size() != ui->video_label->size())
+            {
+                ui->video_label->setPixmap(QPixmap::fromImage(m_load_image).scaled(ui->video_label->size(),Qt::KeepAspectRatio));
+            }
+            else
+            {
+                ui->video_label->setPixmap(QPixmap::fromImage(m_load_image));
+            }
+            m_frame_count++;
+            if (!m_timer->isActive())
+            {
+                m_timer->start(1000);
+            }
         }
-        QByteArray datagram;
-        datagram.resize(udpSocket->pendingDatagramSize());
-        udpSocket->readDatagram(datagram.data(),datagram.size());
-        m_load_image.loadFromData(datagram);
-        if (m_load_image.size() != ui->video_label->size())
+        else if (dataType == "IP")
         {
-            ui->video_label->setPixmap(QPixmap::fromImage(m_load_image).scaled(ui->video_label->size(),Qt::KeepAspectRatio));
+            if (!m_isConnected) //如果已经连接上了就不弹出
+            {
+               connectionBox->addConnection(QString::fromUtf8(dataContent));
+            }
         }
-        else
-        {
-            ui->video_label->setPixmap(QPixmap::fromImage(m_load_image));
-        }
-        this->update();
     }
 }
+
+/**
+ * @brief    定时器超时执行的槽函数
+ * @details  显示每秒接收到的图片帧数
+ */
 
 void VideoArea::onTimeout()
 {
@@ -252,6 +345,11 @@ void VideoArea::onTimeout()
     this->statusBar()->showMessage(displayMsg);
     m_frame_count = 0;
 }
+
+/**
+ * @brief    标记物体后执行的槽函数
+ * @warning  opencv的Rect取值只能是正数，如果传入的_rect是宽高小于0，需要转为正数
+ */
 
 void VideoArea::selectFinished(const QRect &_rect)
 {
@@ -281,6 +379,10 @@ void VideoArea::selectFinished(const QRect &_rect)
     }
 }
 
+/**
+ * @brief    点击菜单栏Port action执行的槽函数，显示portSetupDialog窗口
+ */
+
 void VideoArea::onActioPortClicked()
 {
     if (portSetupDialog->isHidden())
@@ -289,15 +391,29 @@ void VideoArea::onActioPortClicked()
     }
 }
 
+/**
+ * @brief    点击菜单栏Debug view action执行的槽函数，显示或隐藏test_label
+ * @param    flag true显示，false隐藏
+ */
+
 void VideoArea::onActionAreaViewClicked(bool flag)
 {
     test_label->setVisible(flag);
 }
 
+/**
+ * @brief    点击菜单栏Wifi settings action执行的槽函数，显示serverWifiDialog
+ */
+
 void VideoArea::onActionServerWifiClicked()
 {
     serverWifiDialog->exec();
 }
+
+/**
+ * @brief    读取配置文件
+ * @details  初始化设置之前一次登录的的参数
+ */
 
 void VideoArea::readConfigFile()
 {
@@ -320,6 +436,10 @@ void VideoArea::readConfigFile()
     iniReader.endGroup();
     scanIpDialog->loadHistotyAddress(addr_value_list);
 }
+
+/**
+ * @brief    保存配置文件
+ */
 
 void VideoArea::saveConfigFile()
 {
@@ -358,34 +478,10 @@ void VideoArea::saveConfigFile()
     }
 }
 
-void VideoArea::recoverStatus()
-{
-    ui->connect_btn->setText(tr("Connect"));
-    ui->textEdit->append(QString("disconect to %1!").arg(m_server_ip));
-
-    m_long_socket->disconnect();
-    m_long_socket->abort();
-
-    udpSocket->disconnect();
-    udpSocket->abort();
-
-    if (m_timer->isActive())
-    {
-        m_timer->stop();
-    }
-    if (!ui->manual_radio->isChecked())
-    {
-        ui->manual_radio->setChecked(true);
-    }
-    for (int i=0; i<btnList.size(); ++i)
-    {
-        btnList[i]->setEnabled(false);
-    }
-    ui->record_btn->setEnabled(false);
-    ui->reset_btn->setEnabled(false);
-    ui->auto_radio->setEnabled(false);
-    ui->manual_radio->setEnabled(false);    
-}
+/**
+ * @brief    点击Record按钮执行的槽函数
+ * @details  记录机器人停止位置的标记框的大小
+ */
 
 void VideoArea::on_record_btn_clicked()
 {
@@ -396,12 +492,23 @@ void VideoArea::on_record_btn_clicked()
     ui->textEdit->append(QString("Record size: %1\r\n").arg(curSize));
 }
 
+/**
+ * @brief    点击Reset按钮执行的槽函数
+ * @details  当点击过Record按钮后，需要执行下一次测试，需要点击Reset按钮进行重置
+ */
+
 void VideoArea::on_reset_btn_clicked()
 {
     ui->record_btn->setEnabled(true);
     QString cmd("set Stop.Enable=0");
     WriteData(cmd.toUtf8());
 }
+
+/**
+ * @brief    点击manual或auto执行的槽函数
+ * @details  nanual状态下，可以通过Quick walk等按钮直接手动控制机器人动作，
+ *           如果已经标记过物体，点击aoto，机器人会根据识别到的标记框位置自动前进
+ */
 
 void VideoArea::onRadioGroupClicked(int btnID, bool checked)
 {
@@ -432,11 +539,33 @@ void VideoArea::onRadioGroupClicked(int btnID, bool checked)
     }
 }
 
+/**
+ * @brief    点击Quick walk,Quick back等按钮控制机器人动作
+ */
+
 void VideoArea::onActionButtonGroupClicked(int btnID)
 {
     QString cmd = QString("Move,%1").arg(btnID);
     WriteData(cmd.toUtf8());
 }
+
+/**
+ * @brief    当更改udp端口后,需要重新绑定更改后的端口
+ */
+void VideoArea::onUdpPortChanged()
+{
+    udpSocket->abort();
+    if (!udpSocket->bind(portSetupDialog->UdpPort()))
+    {
+       ui->textEdit->append(udpSocket->errorString());
+       return;
+    }
+    ui->textEdit->append(QString("Bind %2 successful !").arg(portSetupDialog->UdpPort()));
+}
+
+/**
+ * @brief    向服务端发送设置的wifi账号密码
+ */
 
 void VideoArea::onWifiChanged(const QString &userName, const QString &password)
 {
@@ -444,9 +573,102 @@ void VideoArea::onWifiChanged(const QString &userName, const QString &password)
     WriteData(msg.toUtf8());
 }
 
+/**
+ * @brief    重写resizeEvent事件
+ * @details  设置test_label，mark_label和显示摄像头的video_label大小一样
+ */
+
 void VideoArea::resizeEvent(QResizeEvent *e)
 {
     test_label->setGeometry(ui->video_label->geometry());
     mark_label->setGeometry(ui->video_label->geometry());
     QMainWindow::resizeEvent(e);
+}
+
+/**
+ * @brief    当滑块的值变化的时候，通过定时器发送指令
+ */
+
+void VideoArea::startSliderTimer()
+{
+    if (!m_sliderTimer->isActive())
+    {
+        m_sliderTimer->start(200);
+    }
+}
+
+/**
+ * @brief    定时器超时，发送指令
+ */
+
+void VideoArea::onSliderTimeout()
+{
+    WriteData(m_command.toUtf8());
+    m_sliderTimer->stop();
+}
+
+/**
+ * @brief    当选择RGB按钮的时候，设置图片格式为RGB
+ */
+
+void VideoArea::on_rgb_radio_toggled(bool checked)
+{
+    if (checked)
+    {
+       QString msg("set Image.Format=RGB");
+       WriteData(msg.toUtf8());
+    }
+}
+
+/**
+ * @brief    当选择YUV按钮的时候，设置图片格式为YUV
+ */
+
+void VideoArea::on_yuv_radio_toggled(bool checked)
+{
+    if (checked)
+    {
+       QString msg("set Image.Format=YUV");
+       WriteData(msg.toUtf8());
+    }
+}
+
+/**
+ * @brief    拖动Y滑块，设置Y值，YUV格式中的Y，也就是亮度，这个是把
+ *           图片的每个像素的Y通道(亮度)都改为一个统一的值
+ * @note     只更改YUV格式中的Y通道，并且强制统一为一个值
+ * @param    value 亮度
+ */
+
+void VideoArea::on_colorY_slider_valueChanged(int value)
+{
+    ui->colorY_label->setText(QString("Y: %1").arg(value));
+    m_command = QString("set Color.Channel.Y=%1").arg(value);
+    startSliderTimer();
+}
+
+/**
+ * @brief    拖动Brightness滑块，设置亮度，这个和Y滑块不一样，这个是
+ *           整体改变亮度，比如RGB格式下，把R,G,B 3个通道都改变
+ * @param    value 亮度
+ */
+
+void VideoArea::on_brightness_slider_valueChanged(int value)
+{
+    double brightness = value/100.0;
+    ui->brightness_label->setText(QString("Brightness: %1").arg(brightness));
+    m_command = QString("set Color.Brightness=%1").arg(brightness);
+    startSliderTimer();
+}
+
+/**
+ * @brief    拖动Contrast滑块，设置对比度，配合Brightness使用
+ * @param    value 对比度
+ */
+
+void VideoArea::on_contrast_slider_valueChanged(int value)
+{
+    ui->contrast_label->setText(QString("Contrast: %1").arg(value));
+    m_command = QString("set Color.Contrast=%1").arg(value);
+    startSliderTimer();
 }

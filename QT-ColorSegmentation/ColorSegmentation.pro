@@ -19,7 +19,8 @@ SOURCES += main.cpp\
     Public/ScanIpDiaog.cpp \
     Public/ScanIpThread.cpp \
     Public/PortSetupDialog.cpp \
-    Public/ServerWifiSettings.cpp
+    Public/ServerWifiSettings.cpp \
+    Public/ConnectionBox.cpp
 
 HEADERS += VideoArea.h\
     Public/painterlabel.h\
@@ -27,12 +28,14 @@ HEADERS += VideoArea.h\
     Public/ScanIpDiaog.h \
     Public/ScanIpThread.h \
     Public/PortSetupDialog.h \
-    Public/ServerWifiSettings.h
+    Public/ServerWifiSettings.h \
+    Public/ConnectionBox.h
 
 FORMS    +=  VideoArea.ui\
     Public/ScanIpDiaog.ui \
     Public/PortSetupDialog.ui \
-    Public/serverwifisettings.ui
+    Public/serverwifisettings.ui \
+    Public/ConnectionBox.ui
 
 PRECOMPILED_HEADER = $$PWD/precompiled.h
 

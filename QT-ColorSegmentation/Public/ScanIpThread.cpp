@@ -1,12 +1,33 @@
+/**
+ * @file       ScanIpThread.cpp
+ * @version    1.0
+ * @date       2017年07月08日
+ * @author     C_Are
+ * @copyright  Leju
+ *
+ * @brief      扫描ip的线程类，ScanIpThread类的cpp文件
+ * @details    扫描局域网内连接的机器人
+ */
+
 #include "ScanIpThread.h"
+
+/**
+ * @brief     ScanIpThread类的构造函数
+ * @param     parent 父对象
+ */
 
 ScanIpThread::ScanIpThread(QObject *parent) : QThread(parent)
 {
     m_port = 0;
     m_wait_connected_time = 500;
-    m_wait_read_time = 3000;
+    m_wait_read_time = 5000;
     m_bStopped = false;
 }
+
+/**
+ * @brief     ScanIpThread类的析构函数
+ * @details   关闭并销毁线程
+ */
 
 ScanIpThread::~ScanIpThread()
 {
@@ -16,10 +37,22 @@ ScanIpThread::~ScanIpThread()
         this->terminate();
 }
 
+/**
+ * @brief     设置tcp端口
+ * @param     port tcp端口号
+ */
+
 void ScanIpThread::setPort(int port)
 {
     m_port = port;
 }
+
+/**
+ * @brief     设置扫描的ip范围
+ * @param     third 局域网段
+ * @param     min 起始位置
+ * @param     max 终止位置
+ */
 
 void ScanIpThread::setScanRange(int third, int min, int max)
 {
@@ -30,6 +63,10 @@ void ScanIpThread::setScanRange(int third, int min, int max)
         m_original_list.append(addr);
     }
 }
+
+/**
+ * @brief     开启线程，扫描m_addr_list
+ */
 
 void ScanIpThread::startScan()
 {
@@ -42,10 +79,19 @@ void ScanIpThread::startScan()
         this->start();
 }
 
+/**
+ * @brief     结束扫描
+ */
+
 void ScanIpThread::stop()
 {
     m_bStopped = true;
 }
+
+
+/**
+ * @brief     重写run函数，在线程中扫描局域网ip
+ */
 
 void ScanIpThread::run()
 {

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>440</width>
-    <height>393</height>
+    <width>387</width>
+    <height>409</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,6 +24,16 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
+      <widget class="QPushButton" name="scan_btn">
+       <property name="text">
+        <string>Scan</string>
+       </property>
+       <property name="autoDefault">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="detail_btn">
        <property name="text">
         <string>Detail</string>
@@ -33,6 +43,9 @@
        </property>
        <property name="checked">
         <bool>true</bool>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
@@ -127,7 +140,11 @@
         <widget class="QLineEdit" name="input_edit"/>
        </item>
        <item>
-        <widget class="QComboBox" name="comboBox"/>
+        <widget class="QComboBox" name="comboBox">
+         <property name="currentIndex">
+          <number>-1</number>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
@@ -138,12 +155,8 @@
          <property name="text">
           <string>Connect</string>
          </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="reStart_btn">
-         <property name="text">
-          <string>ReStart</string>
+         <property name="default">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
