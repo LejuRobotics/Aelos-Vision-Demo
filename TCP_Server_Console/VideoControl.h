@@ -1,21 +1,23 @@
+/**
+ * @file       VideoControl.h
+ * @version    1.0
+ * @date       2017年07月08日
+ * @author     C_Are
+ * @copyright  Leju
+ *
+ * @brief      接收摄像头图像，VideoControl类的h文件
+ */
+
 #ifndef VIDEOCONTROL_H
 #define VIDEOCONTROL_H
 
-#include <QObject>
-#include <QThread>
-#include <QImage>
-#include <QBuffer>
-#include <QTcpSocket>
-#include <QTimer>
-#include <QTime>
-#include <QUdpSocket>
-
-#include <opencv2/opencv.hpp>
-#include "Segmenter.h"
 #include "global_var.h"
+#include "DiscernColor.h"
 
-using namespace cv;
-using namespace std;
+/**
+ * @class     VideoControl
+ * @brief     接收摄像头图像
+ */
 
 class VideoControl : public QThread
 {
@@ -24,59 +26,36 @@ public:
     explicit VideoControl(QObject *parent = 0);
     ~VideoControl();
 
-    enum Position{ Unknown, Left, Right, Center };
-
-    enum ActionStatus { Initial, Doing, Finished };
-
-    QRect currentMark;   //识别物体的标记框位置
-    int actionMode;      //动作模式: 0,手动(测试阶段默认)  1,自动
-    bool isReady;        //是否做好动作准备
-
-    ActionStatus actionStatus;
-
-    void setSelectRect(const QRect &tmp); //标记需要识别的物体
     void openUrl(const QString &ip);
     void stop();
-    void setStopEnable(bool flag);
+    void setBrightness(double val);
+    void setContrast(int val);
+    void setImageFormat(const QString &format);
 
 protected:
     virtual void run();
 
 signals:
-    void directionChanged(int);
     void sendInfo(const QString &);
-
-public slots:
-    void setRebotStatus(ActionStatus status);
-
-private:
-    bool getCurrentMark(const vector<Object*> &objList); //获取最接近目标的标记框
-    void calculateDirection(); //计算物体方向(左，中，右)
-    bool compareMark();
+    void sendFrame(QImage *);
 
 private:
     bool isPause;
-    bool isSendFrame;
-    QImage *rgbImg;
-    Mat rgb_mat;
+    bool isSendFrame;         /**< 是否向客户端发送摄像头头像的标志 */
 
-    QString server_ip;
-
-    bool isSelected;
-    QRect m_select_rect;
-    Position curPosition; //物体所处的方向
-    int m_left_command;
-    int m_right_command;
+    QString m_client_ip;      /**< 客户端ip */
 
     QUdpSocket *udpSocket;
     QByteArray byte;
 
-    bool m_bStopEnable;
-    int m_stop_size;
-    bool isArrive;
-    int m_curSize;
+    Mat rgb_mat;
+    QImage *rgbImg;
+    Mat yuv_mat;
+    QImage *yuvImg;
 
-    int m_action_order;
+    double alpha;             /**< 亮度 */
+    int beta;                 /**< 对比度 */
+    QString m_iamge_format;   /**< 图片格式 */
 };
 
 #endif // VIDEOCONTROL_H

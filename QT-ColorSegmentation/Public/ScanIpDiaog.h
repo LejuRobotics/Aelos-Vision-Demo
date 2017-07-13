@@ -1,8 +1,24 @@
+/**
+ * @file       ScanIpDiaog.h
+ * @version    1.0
+ * @date       2017年07月08日
+ * @author     C_Are
+ * @copyright  Leju
+ *
+ * @brief      连接机器人窗口，ScanIpDiaog类的h文件
+ */
+
 #ifndef SCANIPDIAOG_H
 #define SCANIPDIAOG_H
 
 #include "precompiled.h"
 #include "ScanIpThread.h"
+
+/**
+ * @class     ScanIpDiaog
+ * @brief     连接机器人的窗口
+ * @details   可以通过扫描、输入,和历史记录尝试连接机器人
+ */
 
 namespace Ui {
 class ScanIpDiaog;
@@ -15,6 +31,10 @@ class ScanIpDiaog : public QDialog
 public:
     explicit ScanIpDiaog(QWidget *parent = 0);
     ~ScanIpDiaog();
+
+    /**
+     * @brief     扫描状态
+     */
 
     enum Status{ Inital, Scanning, Finished };
 
@@ -35,7 +55,7 @@ private slots:
 
     void onScanFinished(int sec);
 
-    void on_reStart_btn_clicked();
+    void on_scan_btn_clicked();
 
     void on_quit_btn_clicked();
 
@@ -49,8 +69,10 @@ private slots:
 
     void on_input_edit_textChanged(const QString &arg1);
 
+    void on_comboBox_currentIndexChanged(int index);
+
 signals:
-    void startConnected(const QString &); //send this signal when conect_btn is clicked
+    void startConnectTo(const QString &); //send this signal when conect_btn is clicked
 
 private:
     Ui::ScanIpDiaog *ui;
@@ -64,6 +86,7 @@ private:
     int m_tcp_port;
     int m_scan_finish_count;
     int m_connect_finish_count;
+    bool m_bIsFirstChanged;
 
     void updateProgress();
 

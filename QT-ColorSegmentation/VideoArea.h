@@ -1,3 +1,14 @@
+/**
+ * @file       VideoArea.h
+ * @version    1.0
+ * @date       2017年07月08日
+ * @author     C_Are
+ * @copyright  Leju
+ *
+ * @brief      主窗口，VideoArea类的h文件
+ * @details    VideoArea类是主窗口类，可以接收到的摄像头图像，以及与服务端进行tcp通信
+ */
+
 #ifndef VIDEOAREA_H
 #define VIDEOAREA_H
 
@@ -6,6 +17,13 @@
 #include "PortSetupDialog.h"
 #include "ScanIpDiaog.h"
 #include "ServerWifiSettings.h"
+#include "ConnectionBox.h"
+
+/**
+ * @class     VideoArea
+ * @brief     主窗口
+ * @details   通过udp接收摄像头图像以及与服务端进行tcp通信
+ */
 
 namespace Ui {
 class VideoArea;
@@ -23,7 +41,7 @@ public:
 
 private slots:    
     void on_connect_btn_clicked();
-    void onStartConnected(const QString &ip);
+    void onStartConnectTo(const QString &ip);
 
     void onLongSocketReadyRead();
     void onSocketDisconnect();
@@ -43,7 +61,16 @@ private slots:
     void onRadioGroupClicked(int btnID, bool checked); //check acuto or manual
     void onActionButtonGroupClicked(int btnID);  //clicked on action buttons
 
+    void onUdpPortChanged();
     void onWifiChanged(const QString &userName, const QString &password);
+
+    void onSliderTimeout();
+
+    void on_rgb_radio_toggled(bool checked);
+    void on_yuv_radio_toggled(bool checked);
+    void on_colorY_slider_valueChanged(int value);
+    void on_brightness_slider_valueChanged(int value);
+    void on_contrast_slider_valueChanged(int value);
 
 protected:
     virtual void resizeEvent(QResizeEvent *e) Q_DECL_OVERRIDE;
@@ -67,11 +94,12 @@ private:
     PortSetupDialog *portSetupDialog;
     ScanIpDiaog *scanIpDialog;
     ServerWifiSettings *serverWifiDialog;
+    ConnectionBox *connectionBox;
 
     QString m_server_ip;
 
     QTcpSocket *m_long_socket;
-    QDataStream in;
+    bool m_isConnected;
 
     QUdpSocket *udpSocket;
     QImage m_load_image;
@@ -79,9 +107,12 @@ private:
     QTimer *m_timer;
     int m_frame_count;     
 
+    QTimer *m_sliderTimer;
+    QString m_command;
+
     void readConfigFile();
     void saveConfigFile();
-    void recoverStatus();
+    void startSliderTimer();
 };
 
 #endif // VIDEOAREA_H

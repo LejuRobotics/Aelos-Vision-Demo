@@ -1,4 +1,20 @@
+/**
+ * @file       painterlabel.cpp
+ * @version    1.0
+ * @date       2017年07月08日
+ * @author     C_Are
+ * @copyright  Leju
+ *
+ * @brief      显示标记矩形，PaintLabel类和TestLabel类的cpp文件
+ * @details
+ */
+
 #include "painterlabel.h"
+
+/**
+ * @brief     PaintLabel类的构造函数
+ * @param     parent 父对象
+ */
 
 PaintLabel::PaintLabel(QWidget *parent) : QLabel(parent)
   ,isLeftButtonPressed(false),pen_width(2)
@@ -6,6 +22,11 @@ PaintLabel::PaintLabel(QWidget *parent) : QLabel(parent)
     setScaledContents(true);
     isClean = true;
 }
+
+/**
+ * @brief     重写paintEvent事件
+ * @details   通过记录的点的位置，描绘矩形
+ */
 
 void PaintLabel::paintEvent(QPaintEvent *e)
 {
@@ -21,10 +42,15 @@ void PaintLabel::paintEvent(QPaintEvent *e)
     if (!isClean)
     {
         QPainter p(this);
-        p.setPen(QPen(Qt::red, pen_width));
+        p.setPen(QPen(Qt::blue, pen_width));
         p.drawRect(mark_rect);
     }
 }
+
+/**
+ * @brief    根据传入的参数描绘一个矩形
+ * @param    rect 矩形
+ */
 
 void PaintLabel::drawRect(const QRect &rect)
 {
@@ -33,12 +59,20 @@ void PaintLabel::drawRect(const QRect &rect)
     this->repaint();
 }
 
+/**
+ * @brief    清除之前描绘的矩形
+ */
+
 void PaintLabel::cleanRect()
 {
     isClean = true;
     this->repaint();
 }
 
+/**
+ * @brief     重写mousePressEvent事件
+ * @details   记录第一次鼠标点击的位置
+ */
 
 void PaintLabel::mousePressEvent(QMouseEvent *e)
 {
@@ -50,6 +84,11 @@ void PaintLabel::mousePressEvent(QMouseEvent *e)
     QLabel::mousePressEvent(e);
 }
 
+/**
+ * @brief     重写mouseMoveEvent事件
+ * @details   根据鼠标拖动描绘矩形
+ */
+
 void PaintLabel::mouseMoveEvent(QMouseEvent *e)
 {
     if (isLeftButtonPressed)
@@ -60,6 +99,11 @@ void PaintLabel::mouseMoveEvent(QMouseEvent *e)
     }
     QLabel::mouseMoveEvent(e);
 }
+
+/**
+ * @brief     重写mouseReleaseEvent事件
+ * @details   描绘的矩形大小不超过该控件大小，并发送信号selectFinished()
+ */
 
 void PaintLabel::mouseReleaseEvent(QMouseEvent *e)
 {
@@ -99,11 +143,22 @@ void PaintLabel::mouseReleaseEvent(QMouseEvent *e)
     QLabel::mouseReleaseEvent(e);
 }
 
+/**
+ * @brief     TestLabel类的构造函数
+ * @param     parent 父对象
+ */
+
 TestLabel::TestLabel(QWidget *parent): QLabel(parent)
 {
     m_ratio1 = 0.42;
     m_ratio2 = 0.8;
 }
+
+/**
+ * @brief     根据传入的参数重新绘线
+ * @param     v1 中间区域的位置划分
+ * @param     v2 机器人是执行大幅度转动动作还是小幅度转动动作的区域划分
+ */
 
 void TestLabel::drawArea(double v1, double v2)
 {
@@ -111,6 +166,11 @@ void TestLabel::drawArea(double v1, double v2)
     m_ratio2 = v2;
     this->repaint();
 }
+
+/**
+ * @brief     重写paintEvent事件
+ * @details   根据v1,v2的值重新描绘直线，划分区域
+ */
 
 void TestLabel::paintEvent(QPaintEvent *e)
 {
