@@ -31,7 +31,8 @@ VideoArea::VideoArea(QWidget *parent) :
 
     action_btn_group = new QButtonGroup(this);
     btnList << ui->action_btn_1 << ui->action_btn_2 << ui->action_btn_3
-            << ui->action_btn_4 << ui->action_btn_5 << ui->action_btn_6;
+            << ui->action_btn_4 << ui->action_btn_5 << ui->action_btn_6
+            << ui->action_btn_7 << ui->action_btn_8;
 
     for(int i=0; i<btnList.size(); i++)
     {
@@ -258,6 +259,11 @@ void VideoArea::onLongSocketReadyRead()
            {
                mark_label->cleanRect(); //清除标记框
            }
+           else if (item.startsWith("Mark.RGB="))
+           {
+               m_mark_rgb = item.mid(item.indexOf("=")+1);
+               mark_label->setMarkColor(m_mark_rgb);
+           }
         }
     }
 }
@@ -306,7 +312,8 @@ void VideoArea:: onUdpSocketReadyRead()
         QDataStream m_udpReadStream(&m_udpReadData, QIODevice::ReadOnly);
         m_udpReadStream.setVersion(QDataStream::Qt_5_3);
         m_udpReadStream >> dataType >> dataContent;
-        if (dataType == "IMAGE")
+        QString dataTypeStr = QString::fromUtf8(dataType);
+        if (dataTypeStr == "IMAGE")
         {
             m_load_image.loadFromData(dataContent);
             if (m_load_image.size() != ui->video_label->size())
@@ -323,11 +330,20 @@ void VideoArea:: onUdpSocketReadyRead()
                 m_timer->start(1000);
             }
         }
-        else if (dataType == "IP")
+        else if (dataTypeStr.startsWith("Leju@"))
         {
-            if (!m_isConnected) //如果已经连接上了就不弹出
+            QByteArray infoMd5 = dataType.mid(dataType.indexOf("@")+1).append("-leju");
+            QByteArray byteMd5 = QCryptographicHash::hash(infoMd5, QCryptographicHash::Md5);
+            if (byteMd5.toHex() == dataContent) //校验md5
             {
-               connectionBox->addConnection(QString::fromUtf8(dataContent));
+                QStringList infoList = dataTypeStr.mid(dataTypeStr.indexOf("@")+1).split("-");
+                if (infoList.length() == 2)
+                {
+                    if (!m_isConnected) //如果已经连接上了就不弹出
+                    {
+                       connectionBox->addConnection(infoList[0], infoList[1]);
+                    }
+                }
             }
         }
     }
@@ -490,6 +506,8 @@ void VideoArea::on_record_btn_clicked()
     WriteData(cmd.toUtf8());
     int curSize = m_original_rect.width()*m_original_rect.height();
     ui->textEdit->append(QString("Record size: %1\r\n").arg(curSize));
+
+    ui->tableWidget->addItem(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"),m_mark_rgb,curSize);
 }
 
 /**
@@ -545,7 +563,19 @@ void VideoArea::onRadioGroupClicked(int btnID, bool checked)
 
 void VideoArea::onActionButtonGroupClicked(int btnID)
 {
-    QString cmd = QString("Move,%1").arg(btnID);
+    QString cmd;
+    if (btnID < 7)
+    {
+       cmd = QString("Move,%1").arg(btnID);
+    }
+    else if (btnID == 7)
+    {
+        cmd = "Move,on";
+    }
+    else if (btnID == 8)
+    {
+        cmd = "Move,stop";
+    }
     WriteData(cmd.toUtf8());
 }
 

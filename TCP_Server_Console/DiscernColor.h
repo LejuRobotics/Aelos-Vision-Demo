@@ -60,6 +60,7 @@ protected:
 signals:
     void directionChanged(int);
     void sendInfo(const QString &);
+    void startMoveOn();
 
 private:
     bool getCurrentMark(const vector<Object*> &objList);
@@ -94,6 +95,7 @@ private:
     int m_right_command;
     int m_action_order;
 
+    QString m_mark_rgb;                 /**< 标记框颜色 */
     ColorInfo colorInfo;                /**< 记录标记的颜色的信息 */
     std::vector<Object*> objList;       /**< 识别到颜色位置的对象的容器 */
     unsigned int sizeThreshold;         /**< 识别到颜色位置的对象的像素点阀值 */

@@ -34,6 +34,7 @@ public:
 
     void drawRect(const QRect &rect);
     void cleanRect();
+    void setMarkColor(const QString &pColor);
 
 signals:
     void selectFinished(const QRect&);
@@ -52,6 +53,7 @@ private:
     int pen_width;   /**< 画笔大小 */
     bool isClean;    /**< false则根据mark_rect描绘一个矩形，true则清除mark_rect */
     bool isMoved;    /**< 鼠标是否正在移动的标志 */
+    QColor m_markColor;    /**< 识别到颜色位置的标记框 */
 };
 
 /**
@@ -72,8 +74,8 @@ protected:
     virtual void paintEvent(QPaintEvent *e);
 
 private:
-    double m_ratio1;    /**< 中间区域位置的比例 */
-    double m_ratio2;    /**< 是执行大幅度还是执行小幅度动作的区域位置划分 */
+    double m_ratio1;        /**< 中间区域位置的比例 */
+    double m_ratio2;        /**< 是执行大幅度还是执行小幅度动作的区域位置划分 */
 };
 
 #endif // PAINTERLABEL_H

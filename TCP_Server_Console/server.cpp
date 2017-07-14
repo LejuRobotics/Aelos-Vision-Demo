@@ -32,6 +32,8 @@ int g_right_s_command = 4;  //右转指令(小幅度)
 int g_left_l_command = 5;   //左转指令(大幅度)
 int g_right_l_command = 6;  //右转指令(大幅度)
 int g_connect_net_wait_time = 40000;  //机器人重启后隔40s时间ping路由器判断是否连接上路由器
+QString g_robot_number = "AELOS150C00D";  //机器人编号
+int g_stop_move_on_time_count = 5000; //发送停止持续前进指令的延时时长
 
 /**
  * @brief     Server类的构造函数
@@ -58,6 +60,7 @@ Server::Server()
     connect(videoControl, SIGNAL(sendFrame(QImage*)), discernColor, SLOT(readFrame(QImage*)));
     connect(discernColor,SIGNAL(sendInfo(QString)), this, SLOT(onSendInfo(QString)));
     connect(discernColor,SIGNAL(directionChanged(int)),this,SLOT(onDirectionChanged(int)));
+    connect(discernColor, SIGNAL(startMoveOn()), this, SLOT(onStartMoveOn()));
     connect(m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
 }
 
@@ -228,18 +231,16 @@ bool Server::parseData(const QString &msg)
                 onDirectionChanged(msgList[1].toInt());
                 isOk = true;
             }
-//            else if (msgList[1] == "forward")
-//            {
-//                unsigned char serialnum[] = {0xd1};
-//                char* buf = (char*)(&serialnum);
-//                serialPort->sendMsg(buf,1);
-//            }
-//            else if (msgList[1] == "stop")
-//            {
-//                unsigned char serialnum[] = {0xd0};
-//                char* buf = (char*)(&serialnum);
-//                serialPort->sendMsg(buf,1);
-//            }
+            else if (msgList[1] == "on") //持续快走
+            {
+                WriteSerial2("0xd7");
+                isOk = true;
+            }
+            else if (msgList[1] == "stop") //停止快走
+            {
+                WriteSerial2("0xda");
+                isOk = true;
+            }
         }
     }
     else if (msg.startsWith("set Wifi.Settings="))
@@ -371,11 +372,18 @@ void Server::onTimeout()
     QString localIp = getLocalIP4Address();
     if (!localIp.isEmpty() && !m_connection_count)
     {
+        if (m_local_ip != localIp) //使用md5加密
+        {
+            m_local_ip = localIp;
+            m_byteIpAndNo = QString(m_local_ip + "-" + g_robot_number + "-" + "leju").toUtf8();
+            m_byteMd5 = QCryptographicHash::hash(m_byteIpAndNo, QCryptographicHash::Md5);
+        }
+
         QUdpSocket udpSocket;
         QByteArray datagram;
         QDataStream out(&datagram, QIODevice::WriteOnly);
         out.setVersion(QDataStream::Qt_5_3);
-        out << QString("IP").toUtf8() << localIp.toUtf8();
+        out << QString("Leju@%1-%2").arg(m_local_ip).arg(g_robot_number).toUtf8() << m_byteMd5.toHex();
         udpSocket.writeDatagram(datagram,QHostAddress::Broadcast,g_broadcast_port);
     }
 }
@@ -404,6 +412,8 @@ void Server::readConfigFile()
     g_left_l_command = iniReader.value("Debug/lLeftCommand").toInt();
     g_right_l_command = iniReader.value("Debug/lRightCommand").toInt();
     g_connect_net_wait_time = iniReader.value("Debug/waitConnectNetTime").toInt();
+    g_robot_number = iniReader.value("Robot/No").toString();
+    g_stop_move_on_time_count = iniReader.value("Debug/stopMoveOnTimeCount").toInt();
 
     qDebug()<< " serialName: "<< g_serial_name << "\n"
             << "baudRate: " << g_baud_rate << "\n"
@@ -420,7 +430,9 @@ void Server::readConfigFile()
             << "g_right_s_command: " << g_right_s_command << "\n"
             << "g_left_l_command: " << g_left_l_command << "\n"
             << "g_right_l_command: " << g_right_l_command << "\n"
-            << "g_connect_net_wait_time: " << g_connect_net_wait_time << "\n";
+            << "g_connect_net_wait_time: " << g_connect_net_wait_time << "\n"
+            << "g_robot_number: " << g_robot_number << "\n"
+            << "g_stop_move_on_time_count: " << g_stop_move_on_time_count << "\n";
 }
 
 /**
@@ -547,6 +559,21 @@ void Server::WriteSerial(int val)
     }
 }
 
+void Server::WriteSerial2(const QString &val)
+{
+    unsigned char serialnum[] = {0xd7};
+    if (val == "0xd7")
+    {
+        serialnum[0] = 0xd7;
+    }
+    else if (val == "0xda")
+    {
+        serialnum[0] = 0xda;
+    }
+    char* buf = (char*)(&serialnum);
+    serialPort->sendMsg(buf,1);
+}
+
 /**
  * @brief     通过ping路由器ip,判断机器人是否连接上路由器
  * @details   如果获取不到ip4地址，则设置机器人上的网卡为热点模式,如果连接获取到ip4但不能ping通路由器，也设置为热点模式，
@@ -602,6 +629,25 @@ void Server::pingRouter()
             }
         }
     }
+}
+
+/**
+ * @brief     向串口发送持续快走的指令,同时启动一个定时器，超时停止前进
+ */
+
+void Server::onStartMoveOn()
+{
+    WriteSerial2("0xd7");
+    QTimer::singleShot(g_stop_move_on_time_count, this, SLOT(stopMoveOn()));
+}
+
+/**
+ * @brief     定时器超时，停止前进
+ */
+
+void Server::stopMoveOn()
+{
+    WriteSerial2("0xda");
 }
 
 /**

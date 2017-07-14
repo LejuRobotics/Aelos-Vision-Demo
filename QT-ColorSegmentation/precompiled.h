@@ -31,5 +31,11 @@
 #include <QSettings>
 #include <QTimer>
 #include <QTime>
+#include <QCryptographicHash>
+#include <QTableWidget>
+#include <QHeaderView>
+#include <QComboBox>
+#include <Qmenu>
+#include <QDateTime>
 
 #endif // PRECOMPILED_H

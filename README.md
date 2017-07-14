@@ -18,3 +18,4 @@
 1. 关于客户端连接服务端，如果服务端没有连接上路由器，会自动变成热点模式，热点模式下nanopi固定IP为192.168.8.1，热点名称是机器人编号,比如AELOS150D00F，目前密码为12345678，可以通过客户端上的设置界面设置机器人连接指定的路由器。
 2. nanopi上已安装samba服务器，可以在windows上访问nanopi上的共享文件夹，可以把要编译的源代码放到这个文件夹，登陆方法，在运行框中输入\\192.168.8.1，然后运行，这个ip是nanopi上当前的ip地址，进入这个共享文件夹需要账号密码，账号为aelos,密码aelos
 3. 我们已经设定TCP _Server _ Console服务器为自启动，若果是重新编译这个程序，在编译成功以后，需要把编译好的执行文件放到/opt/qt-project/TCP _Serve _Console下，重启。如果需要手动运行，先杀死已经运行的这个程序的进程，不然串口被占用。
+4. 关于使用doxgen生成html文件，注释规范，网上有很多例子，也可以参考本项目中的工程，我在这里介绍一下如何使用doxgen工具生成html文档。先在官网http://www.doxygen.nl/download.html上面去下载工具，记得下载完整的，包括GUI工具，具体使用可参考http://blog.csdn.net/u010901792/article/details/52804232，http://www.cnblogs.com/chenyang920/p/5732643.html

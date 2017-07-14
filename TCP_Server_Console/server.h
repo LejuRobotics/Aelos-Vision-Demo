@@ -41,6 +41,8 @@ private slots:
     void onTimeout();
     void onSendInfo(const QString &msg);
     void pingRouter();
+    void onStartMoveOn();
+    void stopMoveOn();
 
 private:
     QString m_client_ip;                  /**< 客户端IP */
@@ -56,10 +58,14 @@ private:
     DiscernColor *discernColor;
 
     QTimer *m_timer;
+    QString m_local_ip;
+    QByteArray m_byteIpAndNo;
+    QByteArray m_byteMd5;
 
     void readConfigFile();
     void WriteMsg(const QByteArray &msg);
     void WriteSerial(int val);
+    void WriteSerial2(const QString &val);
     QString getLocalIP4Address() const;
     bool parseData(const QString &msg);
     void modifyNetworkFile(const QString &id, const QString &password);

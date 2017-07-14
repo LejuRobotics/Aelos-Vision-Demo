@@ -6,19 +6,27 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>294</width>
-    <height>175</height>
+    <width>403</width>
+    <height>247</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Connectable</string>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
-   <property name="sizeConstraint">
-    <enum>QLayout::SetFixedSize</enum>
-   </property>
    <item>
-    <widget class="QListWidget" name="listWidget"/>
+    <widget class="QTableWidget" name="tableWidget">
+     <column>
+      <property name="text">
+       <string>IP</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Robot</string>
+      </property>
+     </column>
+    </widget>
    </item>
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
