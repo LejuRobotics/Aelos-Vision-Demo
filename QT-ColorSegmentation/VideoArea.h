@@ -51,15 +51,15 @@ private slots:
 
     void selectFinished(const QRect &_rect);
 
-    //clicked on menubar
+    //点击菜单栏按钮
     void onActioPortClicked();
     void onActionAreaViewClicked(bool flag);
     void onActionServerWifiClicked();
 
-    void on_record_btn_clicked();
-    void on_reset_btn_clicked();
-    void onRadioGroupClicked(int btnID, bool checked); //check acuto or manual
-    void onActionButtonGroupClicked(int btnID);  //clicked on action buttons
+    void on_record_btn_clicked();  //点击Record按钮
+    void on_reset_btn_clicked();   //点击Reset按钮
+    void onRadioGroupClicked(int btnID, bool checked); //点击 acuto 或者 manual按钮
+    void onActionButtonGroupClicked(int btnID);  //点击动作按钮，如Quick walk, Quick back等
 
     void onUdpPortChanged();
     void onWifiChanged(const QString &userName, const QString &password);
@@ -86,6 +86,7 @@ private:
     double m_centerAreaRatio;
     double m_rorationRange;
     QRect m_original_rect;
+    QString m_mark_rgb;
 
     QList<QPushButton*> btnList;
     QButtonGroup *action_btn_group;

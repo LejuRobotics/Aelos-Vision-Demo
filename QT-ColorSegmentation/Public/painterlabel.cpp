@@ -29,7 +29,7 @@ PaintLabel::PaintLabel(QWidget *parent) : QLabel(parent)
  */
 
 void PaintLabel::paintEvent(QPaintEvent *e)
-{
+{   
     QLabel::paintEvent(e);
     if (isLeftButtonPressed && isMoved)
     {
@@ -42,7 +42,7 @@ void PaintLabel::paintEvent(QPaintEvent *e)
     if (!isClean)
     {
         QPainter p(this);
-        p.setPen(QPen(Qt::blue, pen_width));
+        p.setPen(QPen(m_markColor, pen_width));
         p.drawRect(mark_rect);
     }
 }
@@ -67,6 +67,19 @@ void PaintLabel::cleanRect()
 {
     isClean = true;
     this->repaint();
+}
+
+void PaintLabel::setMarkColor(const QString &pColor)
+{
+    QStringList rgb = pColor.split(",");
+    if (rgb.length() != 3)
+    {
+        return;
+    }
+    int r = rgb[0].toInt();
+    int g = rgb[1].toInt();
+    int b = rgb[2].toInt();
+    m_markColor.setRgb(r,g,b);
 }
 
 /**

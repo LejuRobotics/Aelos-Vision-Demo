@@ -34,6 +34,7 @@
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QDebug>
+#include <QCryptographicHash>
 
 /*************************************************************
  * 声明全局变量，在server.cpp文件中定义，这些变量可以在配置文件中更改
@@ -56,5 +57,7 @@ extern int g_right_s_command;             /**< 右转指令(小幅度) */
 extern int g_left_l_command;              /**< 左转指令(大幅度) */
 extern int g_right_l_command;             /**< 右转指令(大幅度) */
 extern int g_connect_net_wait_time;       /**< 程序启动后ping路由器的延迟时长 */
+extern QString g_robot_number;            /**< 机器人编号 */
+extern int g_stop_move_on_time_count;     /**< 发送停止持续前进指令的延时时长 */
 
 #endif // GLOBAL_VAR_H

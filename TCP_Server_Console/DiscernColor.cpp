@@ -10,7 +10,7 @@
 
 #include "DiscernColor.h"
 
-int g_color_channel_Y = 120;
+int g_color_channel_Y = 128;
 
 /**
  * @brief     DiscernColor类的构造函数，初始化
@@ -148,16 +148,17 @@ void DiscernColor::run()
             int rgbMean[3];
             unsigned char uvRange[2][2];
 
-            cv::Mat bgrROI;
-            bgrROI = frame(cv::Rect(m_select_rect.x(), m_select_rect.y(), m_select_rect.width(), m_select_rect.height()));
-            cv::Scalar bgrMean = cv::mean(bgrROI); //计算选中区域的RGB平均值
-            rgbMean[2] = bgrMean[0];
-            rgbMean[1] = bgrMean[1];
-            rgbMean[0] = bgrMean[2];
+            cv::Mat frameROI;
+            frameROI = frame(cv::Rect(m_select_rect.x(), m_select_rect.y(), m_select_rect.width(), m_select_rect.height()));
+            cv::Scalar rgbScalar = cv::mean(frameROI); //计算选中区域的RGB平均值
+            rgbMean[0] = rgbScalar[0];
+            rgbMean[1] = rgbScalar[1];
+            rgbMean[2] = rgbScalar[2];
+
+            m_mark_rgb = QString("Mark.RGB=%1,%2,%3\r\n").arg(rgbMean[1]).arg(rgbMean[2]).arg(rgbMean[0]);
 
             cv::Mat yuvROI;
-//            cv::cvtColor(bgrROI, yuvROI,CV_BGR2YUV);
-            cv::cvtColor(bgrROI, yuvROI,CV_RGB2YUV);
+            cv::cvtColor(frameROI, yuvROI,CV_RGB2YUV);
             std::vector<cv::Mat> yuvROISplit;
             cv::split(yuvROI, yuvROISplit);
             yuvROISplit[1] =yuvROISplit[1].reshape(0,1);
@@ -194,7 +195,6 @@ void DiscernColor::run()
 
 //            t.start(); //开始计时
             Mat yuv_mat;
-//            cv::cvtColor(frame, yuv_mat,CV_BGR2YUV);
             cv::cvtColor(frame, yuv_mat,CV_RGB2YUV);  //进行颜色识别，先转为YUV格式
             for(int i = 0; i < g_frame_height; i++)
             {
@@ -212,6 +212,11 @@ void DiscernColor::run()
             QString msg("@Begin:\r\n");
             if (getCurrentMark(objList)) //当识别到物体位置
             {
+                if (!m_mark_rgb.isEmpty())
+                {
+                    msg.append(m_mark_rgb);
+                    m_mark_rgb.clear();
+                }
                 msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
                            .arg(currentMark.x())
                            .arg(currentMark.y())
@@ -248,21 +253,25 @@ void DiscernColor::run()
                 switch (curPosition)
                 {
                 case Center: //前进
-                    m_action_order = g_forward_command;
+//                    m_action_order = g_forward_command;
+                    emit startMoveOn();
                     break;
                 case Left:  //左转
                     m_action_order = m_left_command;
+                    emit directionChanged(m_action_order);
                     break;
                 case Right: //右转
                     m_action_order = m_right_command;
+                    emit directionChanged(m_action_order);
                     break;
                 case Unknown: //没有识别到颜色，持续右转
                     m_action_order = g_right_l_command;
+                    emit directionChanged(m_action_order);
                     break;
                 default:
                     break;
                 }
-                emit directionChanged(m_action_order);
+//                emit directionChanged(m_action_order);
             }
         }
         //[3]

@@ -20,7 +20,8 @@ SOURCES += main.cpp\
     Public/ScanIpThread.cpp \
     Public/PortSetupDialog.cpp \
     Public/ServerWifiSettings.cpp \
-    Public/ConnectionBox.cpp
+    Public/ConnectionBox.cpp \
+    Public/LejuTbableWidget.cpp
 
 HEADERS += VideoArea.h\
     Public/painterlabel.h\
@@ -29,7 +30,8 @@ HEADERS += VideoArea.h\
     Public/ScanIpThread.h \
     Public/PortSetupDialog.h \
     Public/ServerWifiSettings.h \
-    Public/ConnectionBox.h
+    Public/ConnectionBox.h \
+    Public/LejuTbableWidget.h
 
 FORMS    +=  VideoArea.ui\
     Public/ScanIpDiaog.ui \

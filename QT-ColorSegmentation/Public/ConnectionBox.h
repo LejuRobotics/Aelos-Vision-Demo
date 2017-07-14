@@ -30,7 +30,7 @@ public:
     explicit ConnectionBox(QWidget *parent = 0);
     ~ConnectionBox();
 
-    void addConnection(const QString &addr);
+    void addConnection(const QString &addr, const QString &robotNo);
 
 signals:
     void startConnectTo(const QString &);
@@ -38,12 +38,13 @@ signals:
 private slots:
     void on_connect_btn_clicked();
 
-    void on_listWidget_currentRowChanged(int currentRow);
-
     void onTimeout();
+
+    void on_tableWidget_cellClicked(int row, int column);
 
 protected:
     virtual void closeEvent(QCloseEvent *e);
+    virtual void resizeEvent(QResizeEvent *e);
 
 private:
     Ui::ConnectionBox *ui;

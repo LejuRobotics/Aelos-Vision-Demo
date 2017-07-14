@@ -6,17 +6,11 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>938</width>
+    <width>1127</width>
     <height>673</height>
    </rect>
   </property>
   <property name="minimumSize">
-   <size>
-    <width>938</width>
-    <height>673</height>
-   </size>
-  </property>
-  <property name="maximumSize">
    <size>
     <width>938</width>
     <height>673</height>
@@ -120,7 +114,7 @@
       <number>255</number>
      </property>
      <property name="value">
-      <number>120</number>
+      <number>128</number>
      </property>
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -136,7 +130,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Y: 120</string>
+      <string>Y: 128</string>
      </property>
     </widget>
     <widget class="QLabel" name="brightness_label">
@@ -211,7 +205,7 @@
    <widget class="QPushButton" name="connect_btn">
     <property name="geometry">
      <rect>
-      <x>670</x>
+      <x>680</x>
       <y>10</y>
       <width>90</width>
       <height>28</height>
@@ -224,10 +218,10 @@
    <widget class="QGroupBox" name="groupBox_3">
     <property name="geometry">
      <rect>
-      <x>660</x>
+      <x>670</x>
       <y>60</y>
-      <width>261</width>
-      <height>221</height>
+      <width>441</width>
+      <height>191</height>
      </rect>
     </property>
     <property name="title">
@@ -252,7 +246,7 @@
     <widget class="QPushButton" name="reset_btn">
      <property name="geometry">
       <rect>
-       <x>160</x>
+       <x>120</x>
        <y>20</y>
        <width>90</width>
        <height>28</height>
@@ -281,7 +275,7 @@
     <widget class="QRadioButton" name="manual_radio">
      <property name="geometry">
       <rect>
-       <x>170</x>
+       <x>130</x>
        <y>60</y>
        <width>71</width>
        <height>31</height>
@@ -310,8 +304,8 @@
     <widget class="QPushButton" name="action_btn_2">
      <property name="geometry">
       <rect>
-       <x>160</x>
-       <y>100</y>
+       <x>10</x>
+       <y>140</y>
        <width>90</width>
        <height>28</height>
       </rect>
@@ -323,8 +317,8 @@
     <widget class="QPushButton" name="action_btn_3">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>140</y>
+       <x>120</x>
+       <y>100</y>
        <width>90</width>
        <height>28</height>
       </rect>
@@ -336,7 +330,7 @@
     <widget class="QPushButton" name="action_btn_4">
      <property name="geometry">
       <rect>
-       <x>160</x>
+       <x>120</x>
        <y>140</y>
        <width>90</width>
        <height>28</height>
@@ -349,8 +343,8 @@
     <widget class="QPushButton" name="action_btn_5">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>180</y>
+       <x>230</x>
+       <y>100</y>
        <width>90</width>
        <height>28</height>
       </rect>
@@ -362,8 +356,8 @@
     <widget class="QPushButton" name="action_btn_6">
      <property name="geometry">
       <rect>
-       <x>160</x>
-       <y>180</y>
+       <x>230</x>
+       <y>140</y>
        <width>90</width>
        <height>28</height>
       </rect>
@@ -372,14 +366,50 @@
       <string>Turn right(L)</string>
      </property>
     </widget>
+    <widget class="QPushButton" name="action_btn_7">
+     <property name="geometry">
+      <rect>
+       <x>340</x>
+       <y>100</y>
+       <width>90</width>
+       <height>28</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Move on</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="action_btn_8">
+     <property name="geometry">
+      <rect>
+       <x>340</x>
+       <y>140</y>
+       <width>90</width>
+       <height>28</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Move stop</string>
+     </property>
+    </widget>
    </widget>
    <widget class="QTextEdit" name="textEdit">
     <property name="geometry">
      <rect>
-      <x>660</x>
-      <y>300</y>
-      <width>261</width>
-      <height>321</height>
+      <x>670</x>
+      <y>510</y>
+      <width>441</width>
+      <height>111</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="LejuTbableWidget" name="tableWidget">
+    <property name="geometry">
+     <rect>
+      <x>670</x>
+      <y>260</y>
+      <width>441</width>
+      <height>231</height>
      </rect>
     </property>
    </widget>
@@ -389,7 +419,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>938</width>
+     <width>1127</width>
      <height>21</height>
     </rect>
    </property>
@@ -426,6 +456,13 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>LejuTbableWidget</class>
+   <extends>QTableWidget</extends>
+   <header>LejuTbableWidget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

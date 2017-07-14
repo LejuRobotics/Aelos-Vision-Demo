@@ -91,7 +91,8 @@ void SerialPort::onReadyRead()
     QByteArray hexData = ba.toHex();
     qDebug()<< "RET: "<< hexData;
 
-    if (hexData == "1a000000000000001a00000000000000") //这个是动作完成后返回的值
+    if (hexData == "1a000000000000001a00000000000000" ||
+            hexData == "1a00000000000000") //这个是动作完成后返回的值
     {
         emit actionFinished(); //发送动作完成信号
     }
