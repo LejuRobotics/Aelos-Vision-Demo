@@ -21,6 +21,7 @@ PaintLabel::PaintLabel(QWidget *parent) : QLabel(parent)
 {
     setScaledContents(true);
     isClean = true;
+    m_singled = true;
 }
 
 /**
@@ -42,8 +43,22 @@ void PaintLabel::paintEvent(QPaintEvent *e)
     if (!isClean)
     {
         QPainter p(this);
-        p.setPen(QPen(m_markColor, pen_width));
-        p.drawRect(mark_rect);
+        if (m_singled)
+        {
+            p.setPen(QPen(m_markColor, pen_width));
+            p.drawRect(mark_rect);
+        }
+        else
+        {
+            if (m_mark_color_list.size() != m_mark_rect_vector.size())
+                return;
+
+            for (int i=0; i< m_mark_rect_vector.size(); ++i)
+            {
+                p.setPen(QPen(m_mark_color_list[i], pen_width));
+                p.drawRect(m_mark_rect_vector[i]);
+            }
+        }
     }
 }
 
@@ -52,10 +67,19 @@ void PaintLabel::paintEvent(QPaintEvent *e)
  * @param    rect 矩形
  */
 
-void PaintLabel::drawRect(const QRect &rect)
+void PaintLabel::drawRect(const QRect &_rect)
 {
-    mark_rect = rect;
+    mark_rect = _rect;
     isClean = false;
+    m_singled = true;
+    this->repaint();
+}
+
+void PaintLabel::drawRects(const QVector<QRect> &vector)
+{
+    m_mark_rect_vector = vector;
+    isClean = false;
+    m_singled = false;
     this->repaint();
 }
 
@@ -80,6 +104,19 @@ void PaintLabel::setMarkColor(const QString &pColor)
     int g = rgb[1].toInt();
     int b = rgb[2].toInt();
     m_markColor.setRgb(r,g,b);
+}
+
+void PaintLabel::addMarkColor(const QString &pColor)
+{
+    setMarkColor(pColor);
+    m_mark_color_list.append(m_markColor);
+}
+
+void PaintLabel::removeMarkColorAt(int index)
+{
+    isClean = true;
+    m_mark_color_list.removeAt(index);
+    isClean = false;
 }
 
 /**

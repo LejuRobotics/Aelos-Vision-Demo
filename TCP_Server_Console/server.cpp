@@ -280,6 +280,7 @@ bool Server::parseData(const QString &msg)
         if (!brightness.isEmpty())
         {
             videoControl->setBrightness(brightness.toDouble());
+            isOk = true;
         }
     }
     else if (msg.startsWith("set Color.Contrast="))
@@ -288,7 +289,19 @@ bool Server::parseData(const QString &msg)
         if (!contrast.isEmpty())
         {
             videoControl->setContrast(contrast.toInt());
+            isOk = true;
         }
+    }
+    else if (msg == "Add ColorInfo")
+    {
+        discernColor->addColorInfo();
+        isOk = true;
+    }
+    else if (msg.startsWith("Remove ColorInfo="))
+    {
+        int pIndex = msg.mid(msg.indexOf("=")+1).toInt();
+        discernColor->removeColorInfoAt(pIndex);
+        isOk = true;
     }
 
     return isOk;

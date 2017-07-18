@@ -72,6 +72,8 @@ private slots:
     void on_brightness_slider_valueChanged(int value);
     void on_contrast_slider_valueChanged(int value);
 
+    void deleteRecordMarkColor(int row);
+
 protected:
     virtual void resizeEvent(QResizeEvent *e) Q_DECL_OVERRIDE;
 
@@ -110,6 +112,8 @@ private:
 
     QTimer *m_sliderTimer;
     QString m_command;
+
+    QVector<QRect> m_markRectVec;
 
     void readConfigFile();
     void saveConfigFile();
