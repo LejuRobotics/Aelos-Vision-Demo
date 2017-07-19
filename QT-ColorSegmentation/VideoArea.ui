@@ -237,7 +237,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Record</string>
+      <string>Add</string>
      </property>
      <property name="checkable">
       <bool>false</bool>

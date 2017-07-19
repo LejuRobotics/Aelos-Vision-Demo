@@ -50,6 +50,8 @@ public:
     void setActionStatus(ActionStatus status);
     void setActionReady();
     void setColorChannelY(int val);
+    void addColorInfo();
+    void removeColorInfoAt(int index);
 
 public slots:
     void readFrame(QImage *image);
@@ -67,8 +69,9 @@ private:
     void calculateDirection();
     bool compareMark();
 
-    void addColor(int rgbMean[3],unsigned char channelRange[2][2]);
-    void segment(unsigned char *source, bool mask);
+    void addColor(Mat &frame);
+    void segment(Mat &frame, ColorInfo &info, bool mask);
+    unsigned char GetLabel(ColorInfo &info, unsigned char *source, int pIndex);
 
 private:
     bool m_stopped;
@@ -101,6 +104,8 @@ private:
     unsigned int sizeThreshold;         /**< 识别到颜色位置的对象的像素点阀值 */
     int w;
     int h;
+
+    QList<ColorInfo> m_colorInfoList;
 };
 
 #endif // DISCERNCOLOR_H

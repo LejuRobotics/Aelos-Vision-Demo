@@ -15,7 +15,6 @@
 #include "global_var.h"
 #include "SerialPort.h"
 #include "VideoControl.h"
-//#include "DiscernColor.h"
 
 /**
  * @class     Server
@@ -31,6 +30,20 @@ public:
 
     void startListen(); //开始监听
 
+    /**
+     * @brief     提示音类型
+     */
+    enum CueTone {
+        ConnectSucceeful,   /**< 路由器连接成功，请使用客户端扫描机器人 */
+        ConnectFailed,      /**< 路由器连接失败，正在启动为热点模式 */
+        ApModeAvailable,    /**< 切换到热点，请连接热点操作 */
+        ResartToWifiMode,   /**< 已接收路由器设置，正在重启进入连接路由器模式 */
+        Connectting,        /**< 正在连接路由器 */
+        RestartToApMode,    /**< 重启进入热点模式 */
+    };
+
+    void playAudio(CueTone type);
+
 private slots:
     void onNewConnection();
     void onSocketRead();
@@ -40,9 +53,9 @@ private slots:
     void readyNextAction();
     void onTimeout();
     void onSendInfo(const QString &msg);
-    void pingRouter();
     void onStartMoveOn();
     void stopMoveOn();
+    void startExcuteShell();
 
 private:
     QString m_client_ip;                  /**< 客户端IP */
@@ -61,6 +74,12 @@ private:
     QString m_local_ip;
     QByteArray m_byteIpAndNo;
     QByteArray m_byteMd5;
+
+    QProcess *mplayer;                      /**< 启动mplayer的进程对象 */
+
+    bool m_bIsConnectRounter;
+    int m_pingCount;
+    QString m_shellName;
 
     void readConfigFile();
     void WriteMsg(const QByteArray &msg);

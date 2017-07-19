@@ -75,6 +75,8 @@ VideoArea::VideoArea(QWidget *parent) :
     connectionBox = new ConnectionBox(this);
     connect(connectionBox, SIGNAL(startConnectTo(QString)), this, SLOT(onStartConnectTo(QString)));
 
+    connect(ui->tableWidget, SIGNAL(deleteItem(int)), this, SLOT(deleteRecordMarkColor(int)));
+
     readConfigFile();
 
     m_timer = new QTimer(this);
@@ -245,7 +247,8 @@ void VideoArea::onLongSocketReadyRead()
 
                    QRect realRect = QRect(realX, realY, realW, realH);
 
-                   mark_label->drawRect(realRect); //标记画框
+//                   mark_label->drawRect(realRect); //标记画框
+                   m_markRectVec.append(realRect);
                }
            }
            else if (item.startsWith("Reach.Target="))
@@ -263,7 +266,22 @@ void VideoArea::onLongSocketReadyRead()
            {
                m_mark_rgb = item.mid(item.indexOf("=")+1);
                mark_label->setMarkColor(m_mark_rgb);
+               if (!ui->record_btn->isEnabled())
+               {
+                   ui->record_btn->setEnabled(true);
+               }
            }
+        }
+
+        if (m_markRectVec.size() == 1)
+        {
+            mark_label->drawRect(m_markRectVec[0]);
+            m_markRectVec.clear();
+        }
+        else if (m_markRectVec.size() > 1)
+        {
+            mark_label->drawRects(m_markRectVec);
+            m_markRectVec.clear();
         }
     }
 }
@@ -294,6 +312,10 @@ void VideoArea::onSocketDisconnect()
     ui->reset_btn->setEnabled(false);
     ui->auto_radio->setEnabled(false);
     ui->manual_radio->setEnabled(false);
+    for (int i=ui->tableWidget->rowCount()-1; i>-1; --i)
+    {
+        ui->tableWidget->removeRow(i);
+    }
 }
 
 /**
@@ -501,13 +523,20 @@ void VideoArea::saveConfigFile()
 
 void VideoArea::on_record_btn_clicked()
 {
+    if (ui->tableWidget->rowCount() > 5)
+    {
+        QMessageBox::information(0, tr("提示"), tr("目前最多只能添加6个"),QMessageBox::Ok);
+        return;
+    }
     ui->record_btn->setEnabled(false);
-    QString cmd("set Stop.Enable=1");
-    WriteData(cmd.toUtf8());
     int curSize = m_original_rect.width()*m_original_rect.height();
-    ui->textEdit->append(QString("Record size: %1\r\n").arg(curSize));
-
     ui->tableWidget->addItem(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"),m_mark_rgb,curSize);
+    mark_label->addMarkColor(m_mark_rgb);
+//    if (ui->tableWidget->rowCount() == 1)
+//    {
+//        WriteData(QString("set Stop.Enable=1").toUtf8());
+//    }
+    WriteData(QString("Add ColorInfo").toUtf8());
 }
 
 /**
@@ -701,4 +730,10 @@ void VideoArea::on_contrast_slider_valueChanged(int value)
     ui->contrast_label->setText(QString("Contrast: %1").arg(value));
     m_command = QString("set Color.Contrast=%1").arg(value);
     startSliderTimer();
+}
+
+void VideoArea::deleteRecordMarkColor(int row)
+{
+    WriteData(QString("Remove ColorInfo=%1").arg(row).toUtf8());
+    mark_label->removeMarkColorAt(row);
 }

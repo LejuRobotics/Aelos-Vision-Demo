@@ -110,6 +110,27 @@ void DiscernColor::setActionReady()
     isReady = true;
 }
 
+void DiscernColor::addColorInfo()
+{
+    m_colorInfoList.append(colorInfo);
+    if (m_colorInfoList.size() == 1)
+    {
+        setStopEnable(true);
+    }
+}
+
+void DiscernColor::removeColorInfoAt(int index)
+{
+    if (index < m_colorInfoList.length())
+    {
+        m_colorInfoList.removeAt(index);
+        if (m_colorInfoList.isEmpty())
+        {
+            colorInfo.counter = 0;
+        }
+    }
+}
+
 /**
  * @brief     接收每一帧图片放到线程中处理
  * @param     iamge 图片
@@ -140,76 +161,15 @@ void DiscernColor::run()
         Mat frame;
         //把QImage转为Mat，格式为RGB
         frame = Mat(nextImage.height(), nextImage.width(), CV_8UC3, (void*)nextImage.constBits(), nextImage.bytesPerLine());
-//        cvtColor(frame,frame,CV_RGB2BGR);
+        //        cvtColor(frame,frame,CV_RGB2BGR);
 
         //[2] 处理标记的目标颜色
+        QString msg;
+        msg = "@Begin:\r\n";
         if(m_selected)
         {
-            int rgbMean[3];
-            unsigned char uvRange[2][2];
-
-            cv::Mat frameROI;
-            frameROI = frame(cv::Rect(m_select_rect.x(), m_select_rect.y(), m_select_rect.width(), m_select_rect.height()));
-            cv::Scalar rgbScalar = cv::mean(frameROI); //计算选中区域的RGB平均值
-            rgbMean[0] = rgbScalar[0];
-            rgbMean[1] = rgbScalar[1];
-            rgbMean[2] = rgbScalar[2];
-
-            m_mark_rgb = QString("Mark.RGB=%1,%2,%3\r\n").arg(rgbMean[1]).arg(rgbMean[2]).arg(rgbMean[0]);
-
-            cv::Mat yuvROI;
-            cv::cvtColor(frameROI, yuvROI,CV_RGB2YUV);
-            std::vector<cv::Mat> yuvROISplit;
-            cv::split(yuvROI, yuvROISplit);
-            yuvROISplit[1] =yuvROISplit[1].reshape(0,1);
-            yuvROISplit[2] = yuvROISplit[2].reshape(0,1);
-
-            int len = yuvROISplit[1].size().width-1;
-            unsigned char *pChannel = yuvROISplit[0].data;
-
-            cv::sort(yuvROISplit[1], yuvROISplit[0], CV_SORT_EVERY_ROW + CV_SORT_ASCENDING);
-            uvRange[0][0] = pChannel[(int)(0.02*len)];
-            uvRange[0][1] = pChannel[(int)(0.98*len)];
-
-            cv::sort(yuvROISplit[2], yuvROISplit[0], CV_SORT_EVERY_ROW + CV_SORT_ASCENDING);
-            uvRange[1][0] = pChannel[(int)(0.02*len)];
-            uvRange[1][1] = pChannel[(int)(0.98*len)];
-            addColor(rgbMean,uvRange);
-        }
-        //[2]
-
-        //[3] 计算识别物体位置
-        if(colorInfo.counter)
-        {
-            if (m_selected)
-            {
-                m_selected = false;
-            }
-            else
-            {
-                if (!actionMode || actionStatus == Doing || !isReady || isArrive)
-                {
-                    continue;
-                }
-            }
-
-//            t.start(); //开始计时
-            Mat yuv_mat;
-            cv::cvtColor(frame, yuv_mat,CV_RGB2YUV);  //进行颜色识别，先转为YUV格式
-            for(int i = 0; i < g_frame_height; i++)
-            {
-                Vec3b *p = yuv_mat.ptr<Vec3b>(i);  //通过指针遍历每一个像素点
-                for(int j = 0; j < g_frame_width; j++)
-                {
-//                    yuv_mat.at<cv::Vec3b>(i,j)[0] = 128;
-                    p[j][0] = g_color_channel_Y;
-                }
-            }
-
-            segment((unsigned char*)(yuv_mat.data), 1); //核心函数，识别颜色
-//            qDebug("Time elapsed: %d ms", t.elapsed());  //打印执行计算识别颜色函数消耗的时间
-
-            QString msg("@Begin:\r\n");
+            addColor(frame);
+            segment(frame, colorInfo, 1);
             if (getCurrentMark(objList)) //当识别到物体位置
             {
                 if (!m_mark_rgb.isEmpty())
@@ -223,59 +183,107 @@ void DiscernColor::run()
                            .arg(currentMark.width())
                            .arg(currentMark.height()));
 
-                if (m_bStopEnable)
-                {
-                    if (compareMark())
-                    {
-                        isArrive = true;
-                        msg.append(QString("Reach.Target=%1\r\n").arg(m_curSize));
-                    }
-                }
-
-                calculateDirection();
             }
             else //没有识别到物体位置
             {
-                curPosition = Unknown;
                 msg.append("Unrecognized color\r\n");
             }
-
             msg.append("@End\r\n");
             emit sendInfo(msg);  //发送结果给客户端
-
-            if (isArrive)
-                continue;
-
-            if (actionMode)
+            m_selected = false;
+            continue;
+        }
+        else
+        {
+            if (m_colorInfoList.isEmpty())
             {
-                actionStatus = Doing;
-                isReady = false;
-                switch (curPosition)
+                if (colorInfo.counter)
                 {
-                case Center: //前进
-//                    m_action_order = g_forward_command;
-                    emit startMoveOn();
-                    break;
-                case Left:  //左转
-                    m_action_order = m_left_command;
-                    emit directionChanged(m_action_order);
-                    break;
-                case Right: //右转
-                    m_action_order = m_right_command;
-                    emit directionChanged(m_action_order);
-                    break;
-                case Unknown: //没有识别到颜色，持续右转
-                    m_action_order = g_right_l_command;
-                    emit directionChanged(m_action_order);
-                    break;
-                default:
-                    break;
+                    if (!actionMode || actionStatus == Doing || !isReady || isArrive)
+                    {
+                        continue;
+                    }
+
+                    segment(frame, colorInfo, 1);
+                    if (getCurrentMark(objList)) //当识别到物体位置
+                    {
+                        msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
+                                   .arg(currentMark.x())
+                                   .arg(currentMark.y())
+                                   .arg(currentMark.width())
+                                   .arg(currentMark.height()));
+                        if (m_bStopEnable)
+                        {
+                            if (compareMark())
+                            {
+                                isArrive = true;
+                                msg.append(QString("Reach.Target=%1\r\n").arg(m_curSize));
+                            }
+                        }
+
+                        calculateDirection();
+                    }
+                    else //没有识别到物体位置
+                    {
+                        curPosition = Unknown;
+                        msg.append("Unrecognized color\r\n");
+                    }
+                    msg.append("@End\r\n");
+                    emit sendInfo(msg);  //发送结果给客户端
+
+                    if (isArrive)
+                    {
+                        continue;
+                    }
+
+                    actionStatus = Doing;
+                    isReady = false;
+                    switch (curPosition)
+                    {
+                    case Center: //前进
+                        emit startMoveOn();
+                        break;
+                    case Left:  //左转
+                        emit directionChanged(m_left_command);
+                        break;
+                    case Right: //右转
+                        emit directionChanged(m_right_command);
+                        break;
+                    case Unknown: //没有识别到颜色，持续右转
+                        emit directionChanged(g_right_l_command);
+                        break;
+                    default:
+                        break;
+                    }
                 }
-//                emit directionChanged(m_action_order);
+            }
+            else
+            {
+                if (actionMode)
+                {
+                    for (int i=0; i<m_colorInfoList.size(); ++i)
+                    {
+                        segment(frame, m_colorInfoList[i], 1);
+                        if (getCurrentMark(objList)) //当识别到物体位置
+                        {
+                            msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
+                                       .arg(currentMark.x())
+                                       .arg(currentMark.y())
+                                       .arg(currentMark.width())
+                                       .arg(currentMark.height()));
+
+                        }
+                        else //没有识别到物体位置
+                        {
+                            msg.append("Unrecognized color\r\n");
+                        }
+                    }
+                    msg.append("@End\r\n");
+                    emit sendInfo(msg);  //发送结果给客户端
+                }
+
             }
         }
-        //[3]
-
         msleep(1);
     }
 }
@@ -418,12 +426,41 @@ bool DiscernColor::compareMark()
 
 /**
  * @brief     记录标记的颜色信息
- * @param     rgbMean[3]  目标的平均RGB平均色
- * @param     channelRange[2][2] YUV格式的中U,V的范围
+ * @param     frame  一帧图片
  */
 
-void DiscernColor::addColor(int rgbMean[3],unsigned char channelRange[2][2]) {
-    //添加25行和27行，支持重新识别标记的颜色
+void DiscernColor::addColor(Mat &frame)
+{
+    int rgbMean[3];
+    unsigned char uvRange[2][2];
+
+    cv::Mat frameROI;
+    frameROI = frame(cv::Rect(m_select_rect.x(), m_select_rect.y(), m_select_rect.width(), m_select_rect.height()));
+    cv::Scalar rgbScalar = cv::mean(frameROI); //计算选中区域的RGB平均值
+    rgbMean[0] = rgbScalar[0];
+    rgbMean[1] = rgbScalar[1];
+    rgbMean[2] = rgbScalar[2];
+
+    m_mark_rgb = QString("Mark.RGB=%1,%2,%3\r\n").arg(rgbMean[1]).arg(rgbMean[2]).arg(rgbMean[0]);
+
+    cv::Mat yuvROI;
+    cv::cvtColor(frameROI, yuvROI,CV_RGB2YUV);
+    std::vector<cv::Mat> yuvROISplit;
+    cv::split(yuvROI, yuvROISplit);
+    yuvROISplit[1] =yuvROISplit[1].reshape(0,1);
+    yuvROISplit[2] = yuvROISplit[2].reshape(0,1);
+
+    int len = yuvROISplit[1].size().width-1;
+    unsigned char *pChannel = yuvROISplit[0].data;
+
+    cv::sort(yuvROISplit[1], yuvROISplit[0], CV_SORT_EVERY_ROW + CV_SORT_ASCENDING);
+    uvRange[0][0] = pChannel[(int)(0.02*len)];
+    uvRange[0][1] = pChannel[(int)(0.98*len)];
+
+    cv::sort(yuvROISplit[2], yuvROISplit[0], CV_SORT_EVERY_ROW + CV_SORT_ASCENDING);
+    uvRange[1][0] = pChannel[(int)(0.02*len)];
+    uvRange[1][1] = pChannel[(int)(0.98*len)];
+
     memset(colorInfo.channelLUT,0,2*256*sizeof(unsigned int));
     int colorIndex = colorInfo.counter;
     colorIndex = 0;
@@ -432,14 +469,14 @@ void DiscernColor::addColor(int rgbMean[3],unsigned char channelRange[2][2]) {
     colorInfo.meanColor[colorIndex][1] = rgbMean[1];
     colorInfo.meanColor[colorIndex][2] = rgbMean[2];
 
-    colorInfo.channelRange[colorIndex][0][0] = channelRange[0][0];
-    colorInfo.channelRange[colorIndex][0][1] = channelRange[0][1];
-    colorInfo.channelRange[colorIndex][1][0] = channelRange[1][0];
-    colorInfo.channelRange[colorIndex][1][1] = channelRange[1][1];
+    colorInfo.channelRange[colorIndex][0][0] = uvRange[0][0];
+    colorInfo.channelRange[colorIndex][0][1] = uvRange[0][1];
+    colorInfo.channelRange[colorIndex][1][0] = uvRange[1][0];
+    colorInfo.channelRange[colorIndex][1][1] = uvRange[1][1];
 
-    for(int i=channelRange[0][0]; i<channelRange[0][1]+1; i++)
+    for(int i=uvRange[0][0]; i<uvRange[0][1]+1; i++)
         colorInfo.channelLUT[0][i] |= (1<<colorIndex);
-    for(int i=channelRange[1][0]; i<channelRange[1][1]+1; i++)
+    for(int i=uvRange[1][0]; i<uvRange[1][1]+1; i++)
         colorInfo.channelLUT[1][i] |= (1<<colorIndex);
     colorInfo.counter++;
 }
@@ -450,8 +487,22 @@ void DiscernColor::addColor(int rgbMean[3],unsigned char channelRange[2][2]) {
  * @param     mask 为true则让该像素点变成平均色
  */
 
-void DiscernColor::segment(unsigned char *source, bool mask)
+void DiscernColor::segment(Mat &frame, ColorInfo &info, bool mask)
 {
+    Mat yuv_mat;
+    cv::cvtColor(frame, yuv_mat,CV_RGB2YUV);  //进行颜色识别，先转为YUV格式
+    for(int i = 0; i < g_frame_height; i++)
+    {
+        Vec3b *p = yuv_mat.ptr<Vec3b>(i);  //通过指针遍历每一个像素点
+        for(int j = 0; j < g_frame_width; j++)
+        {
+//                    yuv_mat.at<cv::Vec3b>(i,j)[0] = 128;
+            p[j][0] = g_color_channel_Y;
+        }
+    }
+
+    unsigned char *source = yuv_mat.data;
+
     static Object *tmpObj = NULL;
     static std::stack<int> pixelStack;
     static short int *isVisited = new short int[w*h];
@@ -461,7 +512,8 @@ void DiscernColor::segment(unsigned char *source, bool mask)
 
     for (int i = 0; i < w*h; i ++) {  //for each big pixel
         if(isVisited[i] == -1){        //-1 means it does not belong to any object yet(including the "not interested" object, which is labeled 0)
-            int tmpLabel = getLabel(i); //i*3 inside getColor
+//            int tmpLabel = getLabel(i); //i*3 inside getColor
+            int tmpLabel = GetLabel(info, source, i); //i*3 inside getColor
             if(tmpLabel != 0){
                 tmpObj = new(Object);
                 tmpObj->colorID = tmpLabel;
@@ -475,7 +527,8 @@ void DiscernColor::segment(unsigned char *source, bool mask)
         while(pixelStack.empty() == false) {
             int index = pixelStack.top();
             pixelStack.pop();
-            if(getLabel(index) == tmpObj->colorID) {   //has same color as current scanning object
+//            if(getLabel(index) == tmpObj->colorID) {   //has same color as current scanning object
+             if(GetLabel(info, source, index) == tmpObj->colorID) {   //has same color as current scanning object
                     isVisited[index] = 1;   //label as current object ID
                     if(((index-w)>=0)&&(isVisited[index-w]==-1)){			//using unsigned may cause BUG here
                         pixelStack.push(index-w);   //Up
@@ -502,8 +555,10 @@ void DiscernColor::segment(unsigned char *source, bool mask)
                     tmpObj->pixelCounter++;
                     if(mask){
                         int colorIndex = tmpObj->colorID-1;
-                        source[3*index+1] = colorInfo.meanColor[colorIndex][1];
-                        source[3*index+2] = colorInfo.meanColor[colorIndex][2];
+//                        source[3*index+1] = colorInfo.meanColor[colorIndex][1];
+//                        source[3*index+2] = colorInfo.meanColor[colorIndex][2];
+                        source[3*index+1] = info.meanColor[colorIndex][1];
+                        source[3*index+2] = info.meanColor[colorIndex][2];
                     }
             }else{
                 isVisited[index]= -1;
@@ -519,6 +574,11 @@ void DiscernColor::segment(unsigned char *source, bool mask)
         }
         tmpObj = NULL;
     }
+}
+
+unsigned char DiscernColor::GetLabel(ColorInfo &info, unsigned char *source, int pIndex)
+{
+   return info.channelLUT[0][source[3*pIndex+1]] & info.channelLUT[1][source[3*pIndex+2]];
 }
 
 

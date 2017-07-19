@@ -31,7 +31,7 @@ int g_left_s_command = 3;   //左转指令(小幅度)
 int g_right_s_command = 4;  //右转指令(小幅度)
 int g_left_l_command = 5;   //左转指令(大幅度)
 int g_right_l_command = 6;  //右转指令(大幅度)
-int g_connect_net_wait_time = 40000;  //机器人重启后隔40s时间ping路由器判断是否连接上路由器
+int g_ping_router_count = 8;  //程序启动后ping路由器的次数，每次间隔5秒，如果ping8次（也就是40s）,无法读到数据，则重启设为热点模式
 QString g_robot_number = "AELOS150C00D";  //机器人编号
 int g_stop_move_on_time_count = 5000; //发送停止持续前进指令的延时时长
 
@@ -44,6 +44,9 @@ Server::Server()
 {
     isOPenSerial = false;
     m_connection_count = 0;
+    mplayer = NULL;
+    m_pingCount = 0;
+    m_bIsConnectRounter = false;
 
     readConfigFile();
 
@@ -53,6 +56,7 @@ Server::Server()
     serialPort = new SerialPort(this);
     discernColor = new DiscernColor(this);
     videoControl = new VideoControl(this);
+    mplayer = new QProcess(this);
 
     connect(tcpServer,SIGNAL(newConnection()),this,SLOT(onNewConnection()));
     connect(serialPort, SIGNAL(actionFinished()), this, SLOT(onActionFinished()));
@@ -70,6 +74,13 @@ Server::Server()
 
 Server::~Server()
 {
+    if (mplayer != NULL)
+    {
+        if (mplayer->isOpen())
+            mplayer->close();
+        delete mplayer;
+        mplayer = NULL;
+    }
     if (tcpSocket->isOpen())
     {
         tcpSocket->abort();
@@ -91,10 +102,50 @@ void Server::startListen()
 
     isOPenSerial = serialPort->openSerilPort(); //打开串口
 
-    QTimer::singleShot(g_connect_net_wait_time, this, SLOT(pingRouter())); //g_connect_net_wait_time 毫秒后获取ip
-
     onTimeout(); //先广播一次的ip
     m_timer->start(5000);  //每隔5秒广播一次
+}
+
+/**
+ * @brief     播放提示音
+ * @param     type 提示音类型Server::CueTone
+ */
+
+void Server::playAudio(Server::CueTone type)
+{
+    QString musicName("tone/");
+    switch (type)
+    {
+    case ConnectSucceeful:
+        musicName += "tone-1.mp3";
+        break;
+    case ConnectFailed:
+        musicName += "tone-2.mp3";
+        break;
+    case ApModeAvailable:
+        musicName += "tone-3.mp3";
+        break;
+    case ResartToWifiMode:
+        musicName += "tone-4.mp3";
+        break;
+    case Connectting:
+        musicName += "tone-5.mp3";
+        break;
+    case RestartToApMode:
+        musicName += "tone-6.mp3";
+        break;
+    default:
+        return;
+    }
+
+    QString program = "mplayer";
+    QStringList arguments;
+    arguments << musicName;
+
+    if (mplayer->isOpen())
+        mplayer->close();
+
+    mplayer->start(program, arguments);
 }
 
 /**
@@ -280,6 +331,7 @@ bool Server::parseData(const QString &msg)
         if (!brightness.isEmpty())
         {
             videoControl->setBrightness(brightness.toDouble());
+            isOk = true;
         }
     }
     else if (msg.startsWith("set Color.Contrast="))
@@ -288,7 +340,19 @@ bool Server::parseData(const QString &msg)
         if (!contrast.isEmpty())
         {
             videoControl->setContrast(contrast.toInt());
+            isOk = true;
         }
+    }
+    else if (msg == "Add ColorInfo")
+    {
+        discernColor->addColorInfo();
+        isOk = true;
+    }
+    else if (msg.startsWith("Remove ColorInfo="))
+    {
+        int pIndex = msg.mid(msg.indexOf("=")+1).toInt();
+        discernColor->removeColorInfoAt(pIndex);
+        isOk = true;
     }
 
     return isOk;
@@ -364,31 +428,6 @@ void Server::onSendInfo(const QString &msg)
 }
 
 /**
- * @brief     定时器超时，广播服务器IP地址
- */
-
-void Server::onTimeout()
-{
-    QString localIp = getLocalIP4Address();
-    if (!localIp.isEmpty() && !m_connection_count)
-    {
-        if (m_local_ip != localIp) //使用md5加密
-        {
-            m_local_ip = localIp;
-            m_byteIpAndNo = QString(m_local_ip + "-" + g_robot_number + "-" + "leju").toUtf8();
-            m_byteMd5 = QCryptographicHash::hash(m_byteIpAndNo, QCryptographicHash::Md5);
-        }
-
-        QUdpSocket udpSocket;
-        QByteArray datagram;
-        QDataStream out(&datagram, QIODevice::WriteOnly);
-        out.setVersion(QDataStream::Qt_5_3);
-        out << QString("Leju@%1-%2").arg(m_local_ip).arg(g_robot_number).toUtf8() << m_byteMd5.toHex();
-        udpSocket.writeDatagram(datagram,QHostAddress::Broadcast,g_broadcast_port);
-    }
-}
-
-/**
  * @brief     读取配置文件
  */
 
@@ -411,7 +450,7 @@ void Server::readConfigFile()
     g_right_s_command = iniReader.value("Debug/sRightCommand").toInt();
     g_left_l_command = iniReader.value("Debug/lLeftCommand").toInt();
     g_right_l_command = iniReader.value("Debug/lRightCommand").toInt();
-    g_connect_net_wait_time = iniReader.value("Debug/waitConnectNetTime").toInt();
+    g_ping_router_count = iniReader.value("Debug/pingRouterCount").toInt();
     g_robot_number = iniReader.value("Robot/No").toString();
     g_stop_move_on_time_count = iniReader.value("Debug/stopMoveOnTimeCount").toInt();
 
@@ -430,7 +469,7 @@ void Server::readConfigFile()
             << "g_right_s_command: " << g_right_s_command << "\n"
             << "g_left_l_command: " << g_left_l_command << "\n"
             << "g_right_l_command: " << g_right_l_command << "\n"
-            << "g_connect_net_wait_time: " << g_connect_net_wait_time << "\n"
+            << "g_ping_router_count: " << g_ping_router_count << "\n"
             << "g_robot_number: " << g_robot_number << "\n"
             << "g_stop_move_on_time_count: " << g_stop_move_on_time_count << "\n";
 }
@@ -465,11 +504,14 @@ void Server::modifyNetworkFile(const QString &id, const QString &password)
     file.write(newData.toUtf8());
     file.close();
 
+    playAudio(ResartToWifiMode);
+
     QSettings iniReader("network/wifi.ini",QSettings::IniFormat);
     iniReader.setValue("Configure/mode",0);
 
     qDebug()<<"--===start reset network===---";
-    system("network/wifi/wifi_setup.sh");
+    m_shellName = "network/wifi/wifi_setup.sh";
+    QTimer::singleShot(5000, this, SLOT(startExcuteShell()));
 }
 
 /**
@@ -574,59 +616,90 @@ void Server::WriteSerial2(const QString &val)
     serialPort->sendMsg(buf,1);
 }
 
+
 /**
- * @brief     通过ping路由器ip,判断机器人是否连接上路由器
- * @details   如果获取不到ip4地址，则设置机器人上的网卡为热点模式,如果连接获取到ip4但不能ping通路由器，也设置为热点模式，
- *            热点模式下，机器人的ip固定为192.168.8.1，目前(2017-07-08)热点为机器人编号，密码为12345678
+ * @brief     定时器超时，广播服务器IP地址
  */
 
-void Server::pingRouter()
+void Server::onTimeout()
 {
     QString localIp = getLocalIP4Address();
-    qDebug()<< "localIp: " << localIp;
-    QSettings iniReader("network/wifi.ini",QSettings::IniFormat);
-    QString wifi_mode = iniReader.value("Configure/mode").toString();
-    if (localIp.isEmpty())
+
+    if (!localIp.isEmpty() && !m_connection_count)
     {
+        if (m_local_ip != localIp) //使用md5加密
+        {
+            m_local_ip = localIp;
+            m_byteIpAndNo = QString(m_local_ip + "-" + g_robot_number + "-" + "leju").toUtf8();
+            m_byteMd5 = QCryptographicHash::hash(m_byteIpAndNo, QCryptographicHash::Md5);
+        }
+
+        QUdpSocket udpSocket;
+        QByteArray datagram;
+        QDataStream out(&datagram, QIODevice::WriteOnly);
+        out.setVersion(QDataStream::Qt_5_3);
+        out << QString("Leju@%1-%2").arg(m_local_ip).arg(g_robot_number).toUtf8() << m_byteMd5.toHex();
+        udpSocket.writeDatagram(datagram,QHostAddress::Broadcast,g_broadcast_port);
+    }
+
+    if (m_bIsConnectRounter)
+        return;
+
+    if (!localIp.isEmpty())
+    {
+        if (localIp == "192.168.8.1")
+        {
+            m_bIsConnectRounter = true;
+            playAudio(ApModeAvailable);
+            return;
+        }
+        else
+        {
+            QString routerIp = localIp.mid(0,localIp.lastIndexOf(".")+1) + "1";
+            qDebug()<< "routerIp: "<< routerIp;
+            QProcess *cmd = new QProcess;
+#ifdef Q_OS_WIN
+            QString strArg = "ping " + routerIp + " -n 1 -w 200";
+#else
+            QString strArg = "ping -s 1 -c 1 " + routerIp;
+#endif
+            cmd->start(strArg);
+            cmd->waitForReadyRead();
+            cmd->waitForFinished();
+            QByteArray ba = cmd->readAll();
+            qDebug()<<"--==>Ret: " << QString::fromLocal8Bit(ba);
+
+            delete cmd;
+            cmd = NULL;
+
+            if (!ba.isEmpty())
+            {
+                m_bIsConnectRounter = true;
+                playAudio(ConnectSucceeful);
+                return;
+            }
+        }
+    }
+
+    m_pingCount++;
+    if (m_pingCount == 1)
+    {
+       playAudio(Connectting);
+    }
+    if (m_pingCount == g_ping_router_count)
+    {
+        QSettings iniReader("network/wifi.ini",QSettings::IniFormat);
+        QString wifi_mode = iniReader.value("Configure/mode").toString();
         if (wifi_mode == "0")
         {
-            qDebug()<< "Cannot get ip address"
+            qDebug()<< "Cannot Ping through router"
                     << "\n"
                     << "---===start reset to Wifi AP mode===---";
             iniReader.setValue("Configure/mode",1);
-            system("network/wifi_ap/ap_setup.sh"); //excute shell, replace network file (/etc/network/interfaces) and reboot,
-                                                  //if successful, nanopi will set to Wifi-Ap mode
-        }
-    }
-    else
-    {
-        QString routerIp = localIp.mid(0,localIp.lastIndexOf(".")+1) + "1";
-        qDebug()<< "routerIp: "<< routerIp;
-        QProcess *cmd = new QProcess;
-#ifdef Q_OS_WIN
-        QString strArg = "ping " + routerIp + " -n 1 -w 200";
-#else
-        QString strArg = "ping -s 1 -c 1 " + routerIp;
-#endif
-        cmd->start(strArg);
-        cmd->waitForReadyRead();
-        cmd->waitForFinished();
-        QByteArray ba = cmd->readAll();
-        qDebug()<<"--==>Ret: " << QString::fromLocal8Bit(ba);
 
-        delete cmd;
-        cmd = NULL;
-
-        if (ba.isEmpty())
-        {
-            if (wifi_mode == "0")
-            {
-                qDebug()<< "Cannot Ping through router"
-                        << "\n"
-                        << "---===start reset to Wifi AP mode===---";
-                iniReader.setValue("Configure/mode",1);
-                system("network/wifi_ap/ap_setup.sh");
-            }
+            playAudio(ConnectFailed);
+            m_shellName = "network/wifi_ap/ap_setup.sh";
+            QTimer::singleShot(5000, this, SLOT(startExcuteShell()));
         }
     }
 }
@@ -648,6 +721,12 @@ void Server::onStartMoveOn()
 void Server::stopMoveOn()
 {
     WriteSerial2("0xda");
+}
+
+void Server::startExcuteShell()
+{
+    char *shell = m_shellName.toLatin1().data();
+    system(shell);
 }
 
 /**

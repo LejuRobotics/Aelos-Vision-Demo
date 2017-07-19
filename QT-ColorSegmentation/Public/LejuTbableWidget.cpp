@@ -47,6 +47,7 @@ void LejuTbableWidget::addItem(const QString &pTime, const QString &pColor, int 
 
 void LejuTbableWidget::onDeleteItem()
 {
+    emit deleteItem(this->currentRow());
     removeRow(this->currentRow());
 }
 
@@ -55,24 +56,3 @@ void LejuTbableWidget::contextMenuEvent(QContextMenuEvent *e)
     menu->exec(QCursor::pos());
     QTableWidget::contextMenuEvent(e);
 }
-
-//LejuColorLabel::LejuColorLabel(QWidget *parent)
-//{
-//    colorLabel  = new QLabel(this);
-
-//}
-
-//LejuColorLabel::~LejuColorLabel()
-//{
-
-//}
-
-//void LejuColorLabel::setColor(const QColor &color)
-//{
-
-//}
-
-//void LejuColorLabel::resizeEvent(QResizeEvent *e)
-//{
-
-//}

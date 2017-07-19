@@ -44,6 +44,7 @@ protected:
     virtual void contextMenuEvent(QContextMenuEvent *e);
 
 signals:
+    void deleteItem(int row);
 
 private slots:
     void onDeleteItem();
