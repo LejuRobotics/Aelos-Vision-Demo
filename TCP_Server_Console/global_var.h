@@ -56,7 +56,7 @@ extern int g_left_s_command;              /**< 左转指令(小幅度) */
 extern int g_right_s_command;             /**< 右转指令(小幅度) */
 extern int g_left_l_command;              /**< 左转指令(大幅度) */
 extern int g_right_l_command;             /**< 右转指令(大幅度) */
-extern int g_connect_net_wait_time;       /**< 程序启动后ping路由器的延迟时长 */
+extern int g_ping_router_count;           /**< 程序启动后ping路由器的次数，每次间隔5秒，如果ping8次（也就是40s）,无法读到数据，则重启设为热点模式 */
 extern QString g_robot_number;            /**< 机器人编号 */
 extern int g_stop_move_on_time_count;     /**< 发送停止持续前进指令的延时时长 */
 
