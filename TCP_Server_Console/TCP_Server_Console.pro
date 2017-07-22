@@ -20,14 +20,14 @@ PRECOMPILED_HEADER = $$PWD/global_var.h
 SOURCES += main.cpp \
     server.cpp \
     SerialPort.cpp \
-    Segmenter.cpp \
+#    Segmenter.cpp \
     VideoControl.cpp \
     DiscernColor.cpp
 
 HEADERS += \
     server.h \
     SerialPort.h \
-    Segmenter.h \
+#    Segmenter.h \
     VideoControl.h \
     global_var.h \
     DiscernColor.h

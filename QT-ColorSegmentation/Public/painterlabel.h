@@ -33,11 +33,8 @@ public:
     }
 
     void drawRect(const QRect &_rect);
-    void drawRects(const QVector<QRect> &vector);
     void cleanRect();
     void setMarkColor(const QString &pColor);
-    void addMarkColor(const QString &pColor);
-    void removeMarkColorAt(int index);
 
 signals:
     void selectFinished(const QRect&);
@@ -57,9 +54,6 @@ private:
     bool isClean;    /**< false则根据mark_rect描绘一个矩形，true则清除mark_rect */
     bool isMoved;    /**< 鼠标是否正在移动的标志 */
     QColor m_markColor;    /**< 识别到颜色位置的标记框 */
-    bool m_singled;
-    QVector<QRect> m_mark_rect_vector;
-    QList<QColor> m_mark_color_list;
 };
 
 /**
@@ -74,6 +68,7 @@ class TestLabel : public QLabel
 public:
     explicit TestLabel(QWidget *parent = 0);
 
+public slots:
     void drawArea(double v1, double v2);
 
 protected:

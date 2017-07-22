@@ -18,6 +18,7 @@
 #include "ScanIpDiaog.h"
 #include "ServerWifiSettings.h"
 #include "ConnectionBox.h"
+#include "ParameterSettingDialog.h"
 
 /**
  * @class     VideoArea
@@ -37,9 +38,9 @@ public:
     explicit VideoArea(QWidget *parent = 0);
     ~VideoArea();
 
+private slots:    
     void WriteData(const QByteArray &msg);
 
-private slots:    
     void on_connect_btn_clicked();
     void onStartConnectTo(const QString &ip);
 
@@ -55,6 +56,7 @@ private slots:
     void onActioPortClicked();
     void onActionAreaViewClicked(bool flag);
     void onActionServerWifiClicked();
+    void onActionParamSettingClicked();
 
     void on_record_btn_clicked();  //点击Record按钮
     void on_reset_btn_clicked();   //点击Reset按钮
@@ -72,7 +74,7 @@ private slots:
     void on_brightness_slider_valueChanged(int value);
     void on_contrast_slider_valueChanged(int value);
 
-    void deleteRecordMarkColor(int row);
+    void addInfomation(const QString &msg);
 
 protected:
     virtual void resizeEvent(QResizeEvent *e) Q_DECL_OVERRIDE;
@@ -98,6 +100,7 @@ private:
     ScanIpDiaog *scanIpDialog;
     ServerWifiSettings *serverWifiDialog;
     ConnectionBox *connectionBox;
+    ParameterSettingDialog *parameterSettingDialog;
 
     QString m_server_ip;
 

@@ -1,7 +1,7 @@
 /**
  * @file       ConnectionBox.h
  * @version    1.0
- * @date       2017年07月011日
+ * @date       2017年07月11日
  * @author     C_Are
  * @copyright  Leju
  *
@@ -50,7 +50,6 @@ private:
     Ui::ConnectionBox *ui;
 
     QStringList m_connectionList;
-    int m_broadcastCount;
     bool m_showEnable;
 };
 

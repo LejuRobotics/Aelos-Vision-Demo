@@ -12,28 +12,31 @@
 #include "server.h"
 
 /*************************************************************
- * 定义全局变量
+ * 定义全局变量,这些变量在global.var.h文件中声明
  *************************************************************/
 
-QString g_serial_name = "/dev/ttyS1"; //串口名称
-int g_baud_rate = 9600;     //波特率
-int g_listen_port = 7980;   //接收指令的端口号(服务端，监听)
-int g_broadcast_port = 5713; //发送图片的UDP端口号
-int g_frame_width = 640;    //图片宽度
-int g_frame_height = 480;   //图片高度
-int g_frame_quality = 50;   //图片质量
-double g_horizontal_ratio = 0.4; //中间区域的划分比例，值越大，区域越小
-double g_object_ratio = 0.6;  //物体标记框占中间区域的比例,值越大，越靠近中间区域
-double g_rotation_range = 0.25; //控制标记框的x坐标位置在这个比例位置内用小幅度旋转，否则用大幅度
-int g_time_count = 1500;    //完成一个动作以后的延迟时间
-int g_forward_command = 1;  //前进的指令
-int g_left_s_command = 3;   //左转指令(小幅度)
-int g_right_s_command = 4;  //右转指令(小幅度)
-int g_left_l_command = 5;   //左转指令(大幅度)
-int g_right_l_command = 6;  //右转指令(大幅度)
-int g_ping_router_count = 8;  //程序启动后ping路由器的次数，每次间隔5秒，如果ping8次（也就是40s）,无法读到数据，则重启设为热点模式
-QString g_robot_number = "AELOS150C00D";  //机器人编号
-int g_stop_move_on_time_count = 5000; //发送停止持续前进指令的延时时长
+QString g_serial_name = "/dev/ttyS1";
+int g_baud_rate = 9600;
+int g_listen_port = 7980;
+int g_broadcast_port = 5713;
+int g_frame_width = 640;
+int g_frame_height = 480;
+int g_frame_quality = 50;
+double g_horizontal_ratio = 0.4;
+double g_object_ratio = 0.6;
+double g_rotation_range = 0.25;
+int g_time_count = 1500;
+int g_forward_command = 1;
+int g_left_s_command = 3;
+int g_right_s_command = 4;
+int g_left_l_command = 5;
+int g_right_l_command = 6;
+int g_ping_router_count = 8;
+QString g_robot_number = "AELOS150C00D";
+int g_far_move_on_time = 3500;
+int g_near_move_on_time = 1500;
+double g_arrive_ratio = 0.9;
+double g_access_ratio = 0.4;
 
 /**
  * @brief     Server类的构造函数
@@ -47,6 +50,7 @@ Server::Server()
     mplayer = NULL;
     m_pingCount = 0;
     m_bIsConnectRounter = false;
+    m_bIsReady = true;
 
     readConfigFile();
 
@@ -57,15 +61,18 @@ Server::Server()
     discernColor = new DiscernColor(this);
     videoControl = new VideoControl(this);
     mplayer = new QProcess(this);
+    m_timer_2 = new QTimer(this);
 
     connect(tcpServer,SIGNAL(newConnection()),this,SLOT(onNewConnection()));
     connect(serialPort, SIGNAL(actionFinished()), this, SLOT(onActionFinished()));
+    connect(serialPort, SIGNAL(lowBattery()), this, SLOT(onLowBattery()));
     connect(videoControl,SIGNAL(sendInfo(QString)), this, SLOT(onSendInfo(QString)));
     connect(videoControl, SIGNAL(sendFrame(QImage*)), discernColor, SLOT(readFrame(QImage*)));
     connect(discernColor,SIGNAL(sendInfo(QString)), this, SLOT(onSendInfo(QString)));
     connect(discernColor,SIGNAL(directionChanged(int)),this,SLOT(onDirectionChanged(int)));
-    connect(discernColor, SIGNAL(startMoveOn()), this, SLOT(onStartMoveOn()));
+    connect(discernColor, SIGNAL(startMoveOn(int)), this, SLOT(onStartMoveOn(int)));
     connect(m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
+    connect(m_timer_2, SIGNAL(timeout()), this, SLOT(onReadyPlayLowBattery()));
 }
 
 /**
@@ -93,6 +100,7 @@ Server::~Server()
 
 void Server::startListen()
 {
+    playAudio(StartUp);
     if (!tcpServer->listen(QHostAddress::Any,g_listen_port))
     {
         qDebug()<<tcpServer->errorString();
@@ -102,12 +110,11 @@ void Server::startListen()
 
     isOPenSerial = serialPort->openSerilPort(); //打开串口
 
-    onTimeout(); //先广播一次的ip
-    m_timer->start(5000);  //每隔5秒广播一次
+    m_timer->start(5000);  //每隔5秒广播一次ip
 }
 
 /**
- * @brief     播放提示音
+ * @brief     播放提示音,调用的播放器是mplayer
  * @param     type 提示音类型Server::CueTone
  */
 
@@ -116,6 +123,12 @@ void Server::playAudio(Server::CueTone type)
     QString musicName("tone/");
     switch (type)
     {
+    case StartUp:
+        musicName += "start.mp3";
+        break;
+    case LowBattery:
+        musicName += "lowp.mp3";
+        break;
     case ConnectSucceeful:
         musicName += "tone-1.mp3";
         break;
@@ -201,6 +214,12 @@ void Server::onSocketRead()
         QString retMsg("From server: \r\n");
         retMsg.append(QString("Camera.Resolution=%1x%2\r\n").arg(g_frame_width).arg(g_frame_height));
         retMsg.append(QString("Area.Position=%1,%2\r\n").arg(g_horizontal_ratio).arg(g_rotation_range));
+        retMsg.append(QString("Image.Quality=%1\r\n").arg(g_frame_quality));
+        retMsg.append(QString("Arrive.Ratio=%1\r\n").arg(g_arrive_ratio));
+        retMsg.append(QString("Access.Ratio=%1\r\n").arg(g_access_ratio));
+        retMsg.append(QString("Delay.Count=%1\r\n").arg(g_time_count));
+        retMsg.append(QString("Quick.Count=%1\r\n").arg(g_far_move_on_time));
+        retMsg.append(QString("Slow.Count=%1\r\n").arg(g_near_move_on_time));
         retMsg.append(QString("Open %1 %2 !\r\n").arg(g_serial_name).arg(isOPenSerial ? "successfully" : "failed"));
         retMsg.append("End\r\n");
         WriteMsg(retMsg.toUtf8()); //连接成功，返回信息
@@ -229,9 +248,8 @@ void Server::onSocketRead()
 
 bool Server::parseData(const QString &msg)
 {
-    bool isOk = false;
     if (msg.isEmpty())
-        return isOk;
+        return false;
 
     m_result_msg = msg;
     if (msg.startsWith("set Select.Rect="))
@@ -245,14 +263,27 @@ bool Server::parseData(const QString &msg)
             temp.setWidth(posList[2].toInt());
             temp.setHeight(posList[3].toInt());
             discernColor->setSelectRect(temp);
-            isOk = true;
+            return true;
         }
     }
-    else if (msg.startsWith("set Stop.Enable="))
+    else if (msg.startsWith("Add Target="))
     {
-        int ret = msg.mid(msg.indexOf("=")+1).toInt();
-        discernColor->setStopEnable(ret);
-        isOk = true;
+        QStringList msgList = msg.mid(msg.indexOf("=")+1).split(",");
+        if (msgList.size() == 4)
+        {
+            QString name = msgList[0];
+            int width = msgList[1].toInt();
+            int type = msgList[2].toInt();
+            int turn = msgList[3].toInt();
+            discernColor->addTarget(name, width, type, turn);
+            return true;
+        }
+    }
+    else if(msg.startsWith("Remove Target="))
+    {
+        int index = msg.mid(msg.indexOf("=")+1).toInt();
+        discernColor->removeTarget(index);
+        return true;
     }
     else if(msg.startsWith("set Robot.Action="))
     {
@@ -260,13 +291,18 @@ bool Server::parseData(const QString &msg)
         if (strVal == "manual")
         {
             discernColor->setActionMode(0);
-            isOk = true;
+            return true;
         }
         else if (strVal == "auto")
         {
             discernColor->setActionMode(1);
-            isOk = true;
+            return true;
         }
+    }
+    else if (msg == "RESET")
+    {
+        discernColor->Reset();
+        return true;
     }
     else if (msg.startsWith("Move"))
     {
@@ -280,17 +316,17 @@ bool Server::parseData(const QString &msg)
                     msgList[1] == "9")
             {
                 onDirectionChanged(msgList[1].toInt());
-                isOk = true;
+                return true;
             }
             else if (msgList[1] == "on") //持续快走
             {
                 WriteSerial2("0xd7");
-                isOk = true;
+                return true;
             }
             else if (msgList[1] == "stop") //停止快走
             {
                 WriteSerial2("0xda");
-                isOk = true;
+                return true;
             }
         }
     }
@@ -300,7 +336,7 @@ bool Server::parseData(const QString &msg)
         if (msgList.size() == 2)
         {
             modifyNetworkFile(msgList[0],msgList[1]);
-            isOk = true;
+            return true;
         }
     }
     else if (msg.startsWith("set Image.Format="))
@@ -309,7 +345,7 @@ bool Server::parseData(const QString &msg)
         if (image_format == "RGB" || image_format == "YUV")
         {
             videoControl->setImageFormat(image_format);
-            isOk = true;
+            return true;
         }
     }
     else if (msg.startsWith("set Color.Channel.Y="))
@@ -322,7 +358,7 @@ bool Server::parseData(const QString &msg)
                 return false;
 
             g_color_channel_Y = val;
-            isOk = true;
+            return true;
         }
     }
     else if (msg.startsWith("set Color.Brightness="))
@@ -331,7 +367,7 @@ bool Server::parseData(const QString &msg)
         if (!brightness.isEmpty())
         {
             videoControl->setBrightness(brightness.toDouble());
-            isOk = true;
+            return true;
         }
     }
     else if (msg.startsWith("set Color.Contrast="))
@@ -340,22 +376,90 @@ bool Server::parseData(const QString &msg)
         if (!contrast.isEmpty())
         {
             videoControl->setContrast(contrast.toInt());
-            isOk = true;
+            return true;
         }
     }
-    else if (msg == "Add ColorInfo")
+    else if (msg.startsWith("set Target.Type="))
     {
-        discernColor->addColorInfo();
-        isOk = true;
+        QStringList msgList = msg.mid(msg.indexOf("=")+1).split(",");
+        if (msgList.size() == 2)
+        {
+            int index = msgList[0].toInt();
+            int type = msgList[1].toInt();
+            discernColor->setTargetType(index, type);
+            return true;
+        }
     }
-    else if (msg.startsWith("Remove ColorInfo="))
+    else if (msg.startsWith("set Target.Turn="))
     {
-        int pIndex = msg.mid(msg.indexOf("=")+1).toInt();
-        discernColor->removeColorInfoAt(pIndex);
-        isOk = true;
+        QStringList msgList = msg.mid(msg.indexOf("=")+1).split(",");
+        if (msgList.size() == 2)
+        {
+            int index = msgList[0].toInt();
+            int turn = msgList[1].toInt();
+            discernColor->setTargetTurn(index, turn);
+            return true;
+        }
+    }
+    else if (msg == "get Current.Electricity")
+    {
+        WriteSerial2("0x82");
+        return true;
+    }
+    else if (msg.startsWith("start set param"))
+    {
+        QStringList msgList = msg.split("\r\n");
+        foreach (const QString &item, msgList) {
+            if (item.startsWith("Image.Quality"))
+            {
+                g_frame_quality = item.mid(item.indexOf("=")+1).toInt();
+                if (g_frame_width > 320 && g_frame_quality > 90)
+                {
+                    g_frame_quality = -1;
+                }
+            }
+            else if (item.startsWith("Center.Ratio"))
+            {
+                g_horizontal_ratio = item.mid(item.indexOf("=")+1).toDouble();
+            }
+            else if (item.startsWith("Turn.Ratio"))
+            {
+                g_rotation_range = item.mid(item.indexOf("=")+1).toDouble();
+            }
+            else if (item.startsWith("Arrive.Ratio"))
+            {
+                g_arrive_ratio = item.mid(item.indexOf("=")+1).toDouble();
+            }
+            else if (item.startsWith("Access.Ratio"))
+            {
+                g_access_ratio = item.mid(item.indexOf("=")+1).toDouble();
+            }
+            else if (item.startsWith("Delay.Count"))
+            {
+                g_time_count = item.mid(item.indexOf("=")+1).toInt();
+            }
+            else if (item.startsWith("Quick.Count"))
+            {
+                g_far_move_on_time = item.mid(item.indexOf("=")+1).toInt();
+            }
+            else if (item.startsWith("Slow.Count"))
+            {
+                g_near_move_on_time = item.mid(item.indexOf("=")+1).toInt();
+            }
+            else if (item.startsWith("Camera.Resolution"))
+            {
+                QStringList msgList = item.mid(item.indexOf("=")+1).split("x");
+                if (msgList.size() == 2)
+                {
+                    videoControl->setCameraResolution(msgList[0].toInt(),msgList[1].toInt());
+                    return true;
+                }
+            }
+        }
+        return true;
     }
 
-    return isOk;
+    return false;
 }
 
 /**
@@ -425,53 +529,6 @@ void Server::readyNextAction()
 void Server::onSendInfo(const QString &msg)
 {
     WriteMsg(msg.toUtf8());
-}
-
-/**
- * @brief     读取配置文件
- */
-
-void Server::readConfigFile()
-{
-    QSettings iniReader("setup.ini",QSettings::IniFormat);
-    g_serial_name = iniReader.value("Serial/name").toString();
-    g_baud_rate = iniReader.value("Serial/baudRate").toInt();
-    g_frame_width = iniReader.value("Resolution/width").toInt();
-    g_frame_height = iniReader.value("Resolution/height").toInt();   
-    g_listen_port = iniReader.value("Port/tcpPort").toInt();
-    g_broadcast_port = iniReader.value("Port/udpPort").toInt();
-    g_frame_quality = iniReader.value("Debug/frameQuality").toInt();
-    g_horizontal_ratio = iniReader.value("Debug/horizontalRatio").toDouble();
-    g_object_ratio = iniReader.value("Debug/objectRatio").toDouble();
-    g_rotation_range = iniReader.value("Debug/rotationRange").toDouble();
-    g_time_count = iniReader.value("Debug/timeCount").toInt();
-    g_forward_command = iniReader.value("Debug/forwardCommand").toInt();
-    g_left_s_command = iniReader.value("Debug/sLeftCommand").toInt();
-    g_right_s_command = iniReader.value("Debug/sRightCommand").toInt();
-    g_left_l_command = iniReader.value("Debug/lLeftCommand").toInt();
-    g_right_l_command = iniReader.value("Debug/lRightCommand").toInt();
-    g_ping_router_count = iniReader.value("Debug/pingRouterCount").toInt();
-    g_robot_number = iniReader.value("Robot/No").toString();
-    g_stop_move_on_time_count = iniReader.value("Debug/stopMoveOnTimeCount").toInt();
-
-    qDebug()<< " serialName: "<< g_serial_name << "\n"
-            << "baudRate: " << g_baud_rate << "\n"
-            << QString("resolution: %1x%2").arg(g_frame_width).arg(g_frame_height) << "\n"
-            << "g_listen_port: " << g_listen_port << "\n"
-            << "g_broadcast_port: " << g_broadcast_port << "\n"
-            << "g_frame_quality: " << g_frame_quality << "\n"
-            << "g_horizontal_ratio: " << g_horizontal_ratio << "\n"
-            << "g_object_ratio: " << g_object_ratio << "\n"
-            << "g_rotation_range: " << g_rotation_range << "\n"
-            << "g_time_count: " << g_time_count << "\n"
-            << "g_forward_command: " << g_forward_command << "\n"
-            << "g_left_s_command: " << g_left_s_command << "\n"
-            << "g_right_s_command: " << g_right_s_command << "\n"
-            << "g_left_l_command: " << g_left_l_command << "\n"
-            << "g_right_l_command: " << g_right_l_command << "\n"
-            << "g_ping_router_count: " << g_ping_router_count << "\n"
-            << "g_robot_number: " << g_robot_number << "\n"
-            << "g_stop_move_on_time_count: " << g_stop_move_on_time_count << "\n";
 }
 
 /**
@@ -604,16 +661,25 @@ void Server::WriteSerial(int val)
 void Server::WriteSerial2(const QString &val)
 {
     unsigned char serialnum[] = {0xd7};
-    if (val == "0xd7")
+    if (val == "0xd7")          //持续快走
     {
         serialnum[0] = 0xd7;
     }
-    else if (val == "0xda")
+    else if (val == "0xda")     //停止快走
     {
         serialnum[0] = 0xda;
     }
+    else if (val == "0x82")    //获取当前剩余电量
+    {
+        serialnum[0] = 0x82;
+    }
+    else
+    {
+        return;
+    }
     char* buf = (char*)(&serialnum);
     serialPort->sendMsg(buf,1);
+//     QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
 }
 
 
@@ -708,10 +774,10 @@ void Server::onTimeout()
  * @brief     向串口发送持续快走的指令,同时启动一个定时器，超时停止前进
  */
 
-void Server::onStartMoveOn()
+void Server::onStartMoveOn(int msec)
 {
     WriteSerial2("0xd7");
-    QTimer::singleShot(g_stop_move_on_time_count, this, SLOT(stopMoveOn()));
+    QTimer::singleShot(msec, this, SLOT(stopMoveOn()));
 }
 
 /**
@@ -727,6 +793,25 @@ void Server::startExcuteShell()
 {
     char *shell = m_shellName.toLatin1().data();
     system(shell);
+}
+
+void Server::onLowBattery()
+{
+    if (m_bIsReady)
+    {
+        playAudio(LowBattery);
+        m_bIsReady = false;
+    }
+    if (!m_timer_2->isActive())
+    {
+        m_timer_2->start(5000);
+    }
+}
+
+void Server::onReadyPlayLowBattery()
+{
+    m_bIsReady = true;
+    m_timer_2->stop();
 }
 
 /**
@@ -758,4 +843,57 @@ QString Server::getLocalIP4Address() const
         }
     }
     return QString();
+}
+
+/**
+ * @brief     读取配置文件
+ */
+
+void Server::readConfigFile()
+{
+    QSettings iniReader("setup.ini",QSettings::IniFormat);
+    g_serial_name = iniReader.value("Serial/name").toString();
+    g_baud_rate = iniReader.value("Serial/baudRate").toInt();
+    g_frame_width = iniReader.value("Resolution/width").toInt();
+    g_frame_height = iniReader.value("Resolution/height").toInt();
+    g_listen_port = iniReader.value("Port/tcpPort").toInt();
+    g_broadcast_port = iniReader.value("Port/udpPort").toInt();
+    g_frame_quality = iniReader.value("Debug/frameQuality").toInt();
+    g_horizontal_ratio = iniReader.value("Debug/horizontalRatio").toDouble();
+    g_object_ratio = iniReader.value("Debug/objectRatio").toDouble();
+    g_rotation_range = iniReader.value("Debug/rotationRange").toDouble();
+    g_time_count = iniReader.value("Debug/timeCount").toInt();
+    g_forward_command = iniReader.value("Debug/forwardCommand").toInt();
+    g_left_s_command = iniReader.value("Debug/sLeftCommand").toInt();
+    g_right_s_command = iniReader.value("Debug/sRightCommand").toInt();
+    g_left_l_command = iniReader.value("Debug/lLeftCommand").toInt();
+    g_right_l_command = iniReader.value("Debug/lRightCommand").toInt();
+    g_ping_router_count = iniReader.value("Debug/pingRouterCount").toInt();
+    g_robot_number = iniReader.value("Robot/No").toString();
+    g_far_move_on_time = iniReader.value("Debug/moveOnFarTime").toInt();
+    g_near_move_on_time = iniReader.value("Debug/moveOnNearTime").toInt();
+    g_arrive_ratio = iniReader.value("Debug/arriveRatio").toDouble();
+    g_access_ratio = iniReader.value("Debug/accessRatio").toDouble();
+
+    qDebug()<< "serialName: "<< g_serial_name << "\n"
+            << "baudRate: " << g_baud_rate << "\n"
+            << QString("resolution: %1x%2").arg(g_frame_width).arg(g_frame_height) << "\n"
+            << "g_listen_port: " << g_listen_port << "\n"
+            << "g_broadcast_port: " << g_broadcast_port << "\n"
+            << "g_frame_quality: " << g_frame_quality << "\n"
+            << "g_horizontal_ratio: " << g_horizontal_ratio << "\n"
+            << "g_object_ratio: " << g_object_ratio << "\n"
+            << "g_rotation_range: " << g_rotation_range << "\n"
+            << "g_time_count: " << g_time_count << "\n"
+            << "g_forward_command: " << g_forward_command << "\n"
+            << "g_left_s_command: " << g_left_s_command << "\n"
+            << "g_right_s_command: " << g_right_s_command << "\n"
+            << "g_left_l_command: " << g_left_l_command << "\n"
+            << "g_right_l_command: " << g_right_l_command << "\n"
+            << "g_ping_router_count: " << g_ping_router_count << "\n"
+            << "g_robot_number: " << g_robot_number << "\n"
+            << "g_far_move_on_time: " << g_far_move_on_time << "\n"
+            << "g_near_move_on_time: " << g_near_move_on_time << "\n"
+            << "g_arrive_ratio: " << g_arrive_ratio << "\n"
+            << "g_access_ratio: " << g_access_ratio << "\n";
 }

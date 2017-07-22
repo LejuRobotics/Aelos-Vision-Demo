@@ -12,7 +12,7 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>938</width>
+    <width>1127</width>
     <height>673</height>
    </size>
   </property>
@@ -430,6 +430,7 @@
     <addaction name="action_Port"/>
     <addaction name="action_Area"/>
     <addaction name="action_Server_wifi"/>
+    <addaction name="actionParam_setting"/>
    </widget>
    <addaction name="menu"/>
   </widget>
@@ -453,6 +454,11 @@
   <action name="action_Server_wifi">
    <property name="text">
     <string>&amp;Server wifi</string>
+   </property>
+  </action>
+  <action name="actionParam_setting">
+   <property name="text">
+    <string>Param setting</string>
    </property>
   </action>
  </widget>

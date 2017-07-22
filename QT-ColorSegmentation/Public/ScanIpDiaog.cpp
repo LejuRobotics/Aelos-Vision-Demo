@@ -116,13 +116,14 @@ QString ScanIpDiaog::localIP4()
 void ScanIpDiaog::init()
 {
     QString local_ip = localIP4();
-    qDebug()<< "local ip: "<<local_ip;
+//    qDebug()<< "local ip: "<<local_ip;
     QStringList ip_splite_list = local_ip.split(".");
     if (ip_splite_list.size() < 4)
         return;
 
+    emit sendInfo("local ip: "+local_ip);
     int ip_third_val = ip_splite_list[2].toInt();
-    qDebug()<< "ip_third_val: "<<ip_third_val;
+//    qDebug()<< "ip_third_val: "<<ip_third_val;
     threadList[0]->setScanRange(ip_third_val,2,64);
     threadList[1]->setScanRange(ip_third_val,65,128);
     threadList[2]->setScanRange(ip_third_val,129,191);

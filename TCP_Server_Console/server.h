@@ -34,6 +34,8 @@ public:
      * @brief     提示音类型
      */
     enum CueTone {
+        StartUp,            /**< 主人，您好 */
+        LowBattery,         /**< 电量低，请充电 */
         ConnectSucceeful,   /**< 路由器连接成功，请使用客户端扫描机器人 */
         ConnectFailed,      /**< 路由器连接失败，正在启动为热点模式 */
         ApModeAvailable,    /**< 切换到热点，请连接热点操作 */
@@ -53,9 +55,11 @@ private slots:
     void readyNextAction();
     void onTimeout();
     void onSendInfo(const QString &msg);
-    void onStartMoveOn();
+    void onStartMoveOn(int msec);
     void stopMoveOn();
     void startExcuteShell();
+    void onLowBattery();
+    void onReadyPlayLowBattery();
 
 private:
     QString m_client_ip;                  /**< 客户端IP */
@@ -76,6 +80,9 @@ private:
     QByteArray m_byteMd5;
 
     QProcess *mplayer;                      /**< 启动mplayer的进程对象 */
+
+    QTimer *m_timer_2;
+    bool m_bIsReady;
 
     bool m_bIsConnectRounter;
     int m_pingCount;
