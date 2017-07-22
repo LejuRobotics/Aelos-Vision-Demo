@@ -35,6 +35,7 @@
 #include <QSerialPortInfo>
 #include <QDebug>
 #include <QCryptographicHash>
+#include <stack>
 
 /*************************************************************
  * 声明全局变量，在server.cpp文件中定义，这些变量可以在配置文件中更改
@@ -58,6 +59,9 @@ extern int g_left_l_command;              /**< 左转指令(大幅度) */
 extern int g_right_l_command;             /**< 右转指令(大幅度) */
 extern int g_ping_router_count;           /**< 程序启动后ping路由器的次数，每次间隔5秒，如果ping8次（也就是40s）,无法读到数据，则重启设为热点模式 */
 extern QString g_robot_number;            /**< 机器人编号 */
-extern int g_stop_move_on_time_count;     /**< 发送停止持续前进指令的延时时长 */
+extern int g_far_move_on_time;            /**< 离目标较远的时候，快走的时长 */
+extern int g_near_move_on_time;           /**< 离目标较近的时候，快走的时长 */
+extern double g_arrive_ratio;             /**< 判读到达指定目标位置的标记框的宽的比例*/
+extern double g_access_ratio;             /**< 当前标记框的宽度大于记录的标记框宽度乘以这个比例，则执行慢慢靠近的动作模式 */
 
 #endif // GLOBAL_VAR_H

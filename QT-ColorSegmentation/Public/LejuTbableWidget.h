@@ -1,3 +1,13 @@
+/**
+ * @file       LejuTbableWidget.h
+ * @version    1.0
+ * @date       2017年07月22日
+ * @author     C_Are
+ * @copyright  Leju
+ *
+ * @brief      记录标记颜色的列表，LejuTbableWidget类的h文件
+ */
+
 #ifndef LEJUTBABLEWIDGET_H
 #define LEJUTBABLEWIDGET_H
 
@@ -38,16 +48,21 @@ public:
     explicit LejuTbableWidget(QWidget *parent = 0);
     ~LejuTbableWidget();
 
-    void addItem(const QString &pTime, const QString &pColor, int &pSize);
+    void addItem(const QString &pTime, const QString &pColor, int pWidth);
+    QString lastName() const;
+    int lastType() const;
+    int lastTurn() const;
 
 protected:
     virtual void contextMenuEvent(QContextMenuEvent *e);
 
 signals:
-    void deleteItem(int row);
+    void sendData(const QByteArray &msg);  /**< 通过tcp发送指令的信号 */
 
 private slots:
     void onDeleteItem();
+    void onTypeChanged(int index);
+    void onTurnChanged(int index);
 
 private:
     QStringList m_headLabelList;

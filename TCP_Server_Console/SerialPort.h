@@ -33,6 +33,7 @@ public:
 
 signals:
     void actionFinished();
+    void lowBattery();
 
 private slots:
     void onReadyRead();  //读取串口消息

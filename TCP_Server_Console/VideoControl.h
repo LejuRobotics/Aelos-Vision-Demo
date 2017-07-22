@@ -31,6 +31,10 @@ public:
     void setBrightness(double val);
     void setContrast(int val);
     void setImageFormat(const QString &format);
+    void setCameraResolution(int w, int h);
+
+private slots:
+    void restartCamera();
 
 protected:
     virtual void run();

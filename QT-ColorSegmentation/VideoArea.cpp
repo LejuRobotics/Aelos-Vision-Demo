@@ -49,6 +49,7 @@ VideoArea::VideoArea(QWidget *parent) :
     connect(ui->action_Port, SIGNAL(triggered(bool)), this, SLOT(onActioPortClicked()));
     connect(ui->action_Area, SIGNAL(toggled(bool)), this, SLOT(onActionAreaViewClicked(bool)));
     connect(ui->action_Server_wifi, SIGNAL(triggered(bool)), this, SLOT(onActionServerWifiClicked()));
+    connect(ui->actionParam_setting, SIGNAL(triggered(bool)), this, SLOT(onActionParamSettingClicked()));
 
     radio_btn_group = new QButtonGroup(this);
     radio_btn_group->addButton(ui->auto_radio,0);
@@ -67,6 +68,7 @@ VideoArea::VideoArea(QWidget *parent) :
 
     scanIpDialog = new ScanIpDiaog(this);
     scanIpDialog->hide();
+    connect(scanIpDialog, SIGNAL(sendInfo(QString)), this, SLOT(addInfomation(QString)));
     connect(scanIpDialog, SIGNAL(startConnectTo(QString)), this, SLOT(onStartConnectTo(QString)));
 
     serverWifiDialog = new ServerWifiSettings(this);
@@ -75,7 +77,12 @@ VideoArea::VideoArea(QWidget *parent) :
     connectionBox = new ConnectionBox(this);
     connect(connectionBox, SIGNAL(startConnectTo(QString)), this, SLOT(onStartConnectTo(QString)));
 
-    connect(ui->tableWidget, SIGNAL(deleteItem(int)), this, SLOT(deleteRecordMarkColor(int)));
+    parameterSettingDialog = new ParameterSettingDialog(this);
+    parameterSettingDialog->hide();
+    connect(parameterSettingDialog, SIGNAL(sendData(QByteArray)), this, SLOT(WriteData(QByteArray)));
+    connect(parameterSettingDialog, SIGNAL(debugViewChanged(double,double)), test_label, SLOT(drawArea(double,double)));
+
+    connect(ui->tableWidget, SIGNAL(sendData(QByteArray)), this, SLOT(WriteData(QByteArray)));
 
     readConfigFile();
 
@@ -202,26 +209,60 @@ void VideoArea::onLongSocketReadyRead()
     else if (readData.startsWith("From server:"))
     {
         QStringList msgList = readData.split("\r\n");
-        if (msgList.size() > 2)
+        foreach (const QString &item, msgList)
         {
-            if (msgList[1].startsWith("Camera.Resolution"))
+            if (item.startsWith("Camera.Resolution"))
             {
-              QStringList mList = msgList[1].mid(msgList[1].indexOf("=")+1).split("x");
-              if (mList.size() == 2)
-              {
-                  camera_with = mList[0].toInt();
-                  camera_height = mList[1].toInt();
-              }
+                QString strVal = item.mid(item.indexOf("=")+1);
+                QStringList mList = strVal.split("x");
+                if (mList.size() == 2)
+                {
+                    camera_with = mList[0].toInt();
+                    camera_height = mList[1].toInt();
+                    parameterSettingDialog->setValue(ParameterSettingDialog::Resolution, strVal);
+                }
             }
-            if (msgList[2].startsWith("Area.Position"))
+            else if (item.startsWith("Image.Quality"))
             {
-               QStringList nList = msgList[2].mid(msgList[2].indexOf("=")+1).split(",");
-               if (nList.size() == 2)
-               {
-                   m_centerAreaRatio = nList[0].toDouble();
-                   m_rorationRange = nList[1].toDouble();
-                   test_label->drawArea(m_centerAreaRatio, m_rorationRange);
-               }
+                int val = item.mid(item.indexOf("=")+1).toInt();
+                parameterSettingDialog->setValue(ParameterSettingDialog::ImageQuality, val);
+            }
+            else if (item.startsWith("Area.Position"))
+            {
+                QStringList nList = item.mid(item.indexOf("=")+1).split(",");
+                if (nList.size() == 2)
+                {
+                    m_centerAreaRatio = nList[0].toDouble();
+                    m_rorationRange = nList[1].toDouble();
+                    test_label->drawArea(m_centerAreaRatio, m_rorationRange);
+                    parameterSettingDialog->setValue(ParameterSettingDialog::CenterRatio, m_centerAreaRatio);
+                    parameterSettingDialog->setValue(ParameterSettingDialog::TurnRatio, m_rorationRange);
+                }
+            }
+            else if (item.startsWith("Arrive.Ratio"))
+            {
+                double val = item.mid(item.indexOf("=")+1).toDouble();
+                parameterSettingDialog->setValue(ParameterSettingDialog::ArriveRatio, val);
+            }
+            else if (item.startsWith("Access.Ratio"))
+            {
+                double val = item.mid(item.indexOf("=")+1).toDouble();
+                parameterSettingDialog->setValue(ParameterSettingDialog::AccessRatio, val);
+            }
+            else if (item.startsWith("Delay.Count"))
+            {
+                int val = item.mid(item.indexOf("=")+1).toInt();
+                parameterSettingDialog->setValue(ParameterSettingDialog::DelayCount, val);
+            }
+            else if (item.startsWith("Quick.Count"))
+            {
+                int val = item.mid(item.indexOf("=")+1).toInt();
+                parameterSettingDialog->setValue(ParameterSettingDialog::QuickCount, val);
+            }
+            else if (item.startsWith("Slow.Count"))
+            {
+                int val = item.mid(item.indexOf("=")+1).toInt();
+                parameterSettingDialog->setValue(ParameterSettingDialog::SlowCount, val);
             }
         }
     }
@@ -246,17 +287,12 @@ void VideoArea::onLongSocketReadyRead()
                    int realH = qRound((double)m_original_rect.height() / camera_height * ui->video_label->height());
 
                    QRect realRect = QRect(realX, realY, realW, realH);
-
-//                   mark_label->drawRect(realRect); //标记画框
-                   m_markRectVec.append(realRect);
+                   mark_label->drawRect(realRect); //标记画框
                }
            }
            else if (item.startsWith("Reach.Target="))
            {
-               if (!ui->manual_radio->isChecked())
-               {
-                   ui->manual_radio->setChecked(true);
-               }
+               ui->manual_radio->setChecked(true);
            }
            else if (item.startsWith("Unrecognized color"))
            {
@@ -271,17 +307,6 @@ void VideoArea::onLongSocketReadyRead()
                    ui->record_btn->setEnabled(true);
                }
            }
-        }
-
-        if (m_markRectVec.size() == 1)
-        {
-            mark_label->drawRect(m_markRectVec[0]);
-            m_markRectVec.clear();
-        }
-        else if (m_markRectVec.size() > 1)
-        {
-            mark_label->drawRects(m_markRectVec);
-            m_markRectVec.clear();
         }
     }
 }
@@ -448,6 +473,11 @@ void VideoArea::onActionServerWifiClicked()
     serverWifiDialog->exec();
 }
 
+void VideoArea::onActionParamSettingClicked()
+{
+    parameterSettingDialog->exec();
+}
+
 /**
  * @brief    读取配置文件
  * @details  初始化设置之前一次登录的的参数
@@ -529,25 +559,25 @@ void VideoArea::on_record_btn_clicked()
         return;
     }
     ui->record_btn->setEnabled(false);
-    int curSize = m_original_rect.width()*m_original_rect.height();
-    ui->tableWidget->addItem(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"),m_mark_rgb,curSize);
-    mark_label->addMarkColor(m_mark_rgb);
-//    if (ui->tableWidget->rowCount() == 1)
-//    {
-//        WriteData(QString("set Stop.Enable=1").toUtf8());
-//    }
-    WriteData(QString("Add ColorInfo").toUtf8());
+    QString time = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+    ui->tableWidget->addItem(time,m_mark_rgb,m_original_rect.width());
+
+    QString cmd = QString("Add Target=%1,%2,%3,%4")
+            .arg(ui->tableWidget->lastName())
+            .arg(m_original_rect.width())
+            .arg(ui->tableWidget->lastType())
+            .arg(ui->tableWidget->lastTurn());
+    WriteData(cmd.toUtf8());
 }
 
 /**
- * @brief    点击Reset按钮执行的槽函数
- * @details  当点击过Record按钮后，需要执行下一次测试，需要点击Reset按钮进行重置
+ * @brief    点击Reset按钮执行的槽函数,重置服务端
  */
 
 void VideoArea::on_reset_btn_clicked()
 {
     ui->record_btn->setEnabled(true);
-    QString cmd("set Stop.Enable=0");
+    QString cmd("RESET");
     WriteData(cmd.toUtf8());
 }
 
@@ -732,8 +762,7 @@ void VideoArea::on_contrast_slider_valueChanged(int value)
     startSliderTimer();
 }
 
-void VideoArea::deleteRecordMarkColor(int row)
+void VideoArea::addInfomation(const QString &msg)
 {
-    WriteData(QString("Remove ColorInfo=%1").arg(row).toUtf8());
-    mark_label->removeMarkColorAt(row);
+    ui->textEdit->append(msg);
 }

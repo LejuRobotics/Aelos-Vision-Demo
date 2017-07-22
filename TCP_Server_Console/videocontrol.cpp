@@ -68,19 +68,68 @@ void VideoControl::stop()
     isSendFrame = false;
 }
 
+/**
+ * @brief     设置亮度
+ * @param     val 亮度
+ */
+
 void VideoControl::setBrightness(double val)
 {
     alpha = val;
 }
+
+/**
+ * @brief     设置对比度
+ * @param     val 对比度
+ */
 
 void VideoControl::setContrast(int val)
 {
     beta = val;
 }
 
+/**
+ * @brief     设置图片显示模式
+ * @param     format 图片格式
+ */
+
 void VideoControl::setImageFormat(const QString &format)
 {
     m_iamge_format = format;
+}
+
+/**
+ * @brief     设置摄像头分辨率
+ * @param     w 宽
+ * @param     h 高
+ */
+
+void VideoControl::setCameraResolution(int w, int h)
+{
+    if (w != g_frame_width)
+    {
+        isPause = true;
+        g_frame_width = w;
+        g_frame_height = h;
+        if (w > 320 && g_frame_quality > 90)
+        {
+            g_frame_quality = -1;
+        }
+        QTimer::singleShot(1500, this, SLOT(restartCamera()));
+    }
+}
+
+/**
+ * @brief     重新开启摄像头
+ */
+
+void VideoControl::restartCamera()
+{
+    isPause = false;
+    if (!this->isRunning())
+    {
+        this->start();  //开启线程，进入run()函数
+    }
 }
 
 /**
@@ -175,6 +224,11 @@ void VideoControl::run()
         }
         //[3]
         msleep(1);
+    }
+
+    if (isPause)
+    {
+        cap.release();
     }
 }
 

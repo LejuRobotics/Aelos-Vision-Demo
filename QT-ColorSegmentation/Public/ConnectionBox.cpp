@@ -16,7 +16,6 @@ ConnectionBox::ConnectionBox(QWidget *parent) :
     ui(new Ui::ConnectionBox)
 {
     ui->setupUi(this);
-    m_broadcastCount = 0;
     m_showEnable = true;
 
     ui->connect_btn->setEnabled(false);
@@ -35,16 +34,6 @@ ConnectionBox::~ConnectionBox()
 
 void ConnectionBox::addConnection(const QString &addr, const QString &robotNo)
 {
-    m_broadcastCount++;
-    if (m_broadcastCount > 9)
-    {
-        m_connectionList.clear();
-        for (int i=ui->tableWidget->rowCount()-1; i>-1; --i)
-        {
-            ui->tableWidget->removeRow(i);
-        }
-        m_broadcastCount = 0;
-    }
     if (!m_connectionList.contains(addr))
     {
         m_connectionList.append(addr);
@@ -70,6 +59,12 @@ void ConnectionBox::on_connect_btn_clicked()
 {
     this->hide();
     emit startConnectTo(ui->tableWidget->item(ui->tableWidget->currentRow(),0)->text());
+    QTimer::singleShot(3000, this, SLOT(onTimeout()));
+    m_connectionList.clear();
+    for (int i=ui->tableWidget->rowCount()-1; i>-1; --i)
+    {
+        ui->tableWidget->removeRow(i);
+    }
 }
 
 void ConnectionBox::onTimeout()
@@ -80,7 +75,12 @@ void ConnectionBox::onTimeout()
 void ConnectionBox::closeEvent(QCloseEvent *e)
 {
     m_showEnable = false;
-    QTimer::singleShot(10000, this, SLOT(onTimeout()));
+    QTimer::singleShot(5000, this, SLOT(onTimeout()));
+    m_connectionList.clear();
+    for (int i=ui->tableWidget->rowCount()-1; i>-1; --i)
+    {
+        ui->tableWidget->removeRow(i);
+    }
     QDialog::closeEvent(e);
 }
 

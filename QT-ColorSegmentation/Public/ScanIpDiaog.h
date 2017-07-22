@@ -73,6 +73,7 @@ private slots:
 
 signals:
     void startConnectTo(const QString &); //send this signal when conect_btn is clicked
+    void sendInfo(const QString &);
 
 private:
     Ui::ScanIpDiaog *ui;

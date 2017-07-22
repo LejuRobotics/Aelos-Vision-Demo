@@ -24,16 +24,15 @@ DiscernColor::DiscernColor(QObject *parent) : QThread(parent)
     curPosition = Unknown;
     actionMode = 0;
     actionStatus = Initial;
+    moveMode = Track;
     m_left_command = 3;
     m_right_command = 4;
-    m_bStopEnable = false;
-    m_stop_size = 0;
-    isArrive = false;
-    m_curSize = 0;
-    m_action_order = 1;
     w = g_frame_width;
     h = g_frame_height;
     sizeThreshold = 100;
+    obstacleCount = 0;
+    m_findCount = 0;
+    m_nMoveOnTimeCount = 3000;
 }
 
 /**
@@ -52,24 +51,72 @@ DiscernColor::~DiscernColor()
 }
 
 /**
- * @brief     设置机器人是否可以在目标附近自动停止
- * @param     flag 为true，记录停止需要停止位置的标记框大小，为false,则恢复初始状态
+ * @brief     重置，重新初始化一些参数
  */
 
-void DiscernColor::setStopEnable(bool flag)
+void DiscernColor::Reset()
 {
-    m_bStopEnable = flag;
-    if (flag)
-    {
-        m_stop_size = currentMark.width()*currentMark.height();
-        qDebug("record size: %d", m_stop_size);
-    }
-    else
-    {
-        m_stop_size = 0;
-        isArrive = false;
-        actionStatus = Initial;
-    }
+    isReady = false;
+    curPosition = Unknown;
+    actionMode = 0;
+    actionStatus = Initial;
+    moveMode = Track;
+    obstacleCount = 0;
+}
+
+/**
+ * @brief      添加一个目标，保存该目标的名称，停止位置的宽度，类型，和转动方向
+ * @param      name  目标名称
+ * @param      width 停止位置识别到的目标标记框的宽度
+ * @param      type  类型，目前有两种类型，一种是障碍物，一种是目标
+ * @param      turn  做避障动作时的转动方向
+ */
+
+void DiscernColor::addTarget(const QString &name, int width, int type, int turn)
+{
+    Target obj;
+    obj.name = name;
+    obj.maxWidth = width;
+    obj.type = type;
+    obj.turn = turn;
+    obj.colorInfo = colorInfo;
+    obj.state = 0;
+    m_targetList << obj;
+}
+
+/**
+ * @brief     设置目标类型
+ * @param     index  第几个目标
+ * @param     type   目标类型,0障碍物, 1目标
+ */
+
+void DiscernColor::setTargetType(int index, int type)
+{
+    if (index < m_targetList.size())
+        m_targetList[index].type = type;
+}
+
+/**
+ * @brief     设置避障动作的转动方向
+ * @param     index  第几个目标
+ * @param     type   转动方向,0左边, 1右边
+ */
+
+void DiscernColor::setTargetTurn(int index, int turn)
+{
+    if (index < m_targetList.size())
+        m_targetList[index].turn = turn;
+}
+
+/**
+ * @brief     删除指定的目标
+ * @param     index  第几个目标
+ */
+
+void DiscernColor::removeTarget(int index)
+{
+    if (index < m_targetList.size())
+        m_targetList.removeAt(index);
 }
 
 /**
@@ -83,11 +130,13 @@ void DiscernColor::setActionMode(int mode)
     {
         actionMode = 1;
         isReady = true;
+        actionStatus = Initial;
     }
     else
     {
         actionMode = 0;
         isReady = false;
+        actionStatus = Doing;
     }
 }
 
@@ -108,27 +157,6 @@ void DiscernColor::setActionStatus(DiscernColor::ActionStatus status)
 void DiscernColor::setActionReady()
 {
     isReady = true;
-}
-
-void DiscernColor::addColorInfo()
-{
-    m_colorInfoList.append(colorInfo);
-    if (m_colorInfoList.size() == 1)
-    {
-        setStopEnable(true);
-    }
-}
-
-void DiscernColor::removeColorInfoAt(int index)
-{
-    if (index < m_colorInfoList.length())
-    {
-        m_colorInfoList.removeAt(index);
-        if (m_colorInfoList.isEmpty())
-        {
-            colorInfo.counter = 0;
-        }
-    }
 }
 
 /**
@@ -161,12 +189,9 @@ void DiscernColor::run()
         Mat frame;
         //把QImage转为Mat，格式为RGB
         frame = Mat(nextImage.height(), nextImage.width(), CV_8UC3, (void*)nextImage.constBits(), nextImage.bytesPerLine());
-        //        cvtColor(frame,frame,CV_RGB2BGR);
 
-        //[2] 处理标记的目标颜色
-        QString msg;
-        msg = "@Begin:\r\n";
-        if(m_selected)
+        QString msg("@Begin:\r\n");
+        if(m_selected)  //当客户端标记一个颜色时
         {
             addColor(frame);
             segment(frame, colorInfo, 1);
@@ -191,97 +216,57 @@ void DiscernColor::run()
             msg.append("@End\r\n");
             emit sendInfo(msg);  //发送结果给客户端
             m_selected = false;
-            continue;
         }
         else
         {
-            if (m_colorInfoList.isEmpty())
+            if (actionMode == 1) //自动
             {
-                if (colorInfo.counter)
+                targetNumber = currentTarget();
+                if (actionStatus == Doing || !isReady || targetNumber == -1 || moveMode == Wait)
                 {
-                    if (!actionMode || actionStatus == Doing || !isReady || isArrive)
-                    {
-                        continue;
-                    }
-
-                    segment(frame, colorInfo, 1);
-                    if (getCurrentMark(objList)) //当识别到物体位置
-                    {
-                        msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
-                                   .arg(currentMark.x())
-                                   .arg(currentMark.y())
-                                   .arg(currentMark.width())
-                                   .arg(currentMark.height()));
-                        if (m_bStopEnable)
-                        {
-                            if (compareMark())
-                            {
-                                isArrive = true;
-                                msg.append(QString("Reach.Target=%1\r\n").arg(m_curSize));
-                            }
-                        }
-
-                        calculateDirection();
-                    }
-                    else //没有识别到物体位置
-                    {
-                        curPosition = Unknown;
-                        msg.append("Unrecognized color\r\n");
-                    }
-                    msg.append("@End\r\n");
-                    emit sendInfo(msg);  //发送结果给客户端
-
-                    if (isArrive)
-                    {
-                        continue;
-                    }
-
-                    actionStatus = Doing;
-                    isReady = false;
-                    switch (curPosition)
-                    {
-                    case Center: //前进
-                        emit startMoveOn();
-                        break;
-                    case Left:  //左转
-                        emit directionChanged(m_left_command);
-                        break;
-                    case Right: //右转
-                        emit directionChanged(m_right_command);
-                        break;
-                    case Unknown: //没有识别到颜色，持续右转
-                        emit directionChanged(g_right_l_command);
-                        break;
-                    default:
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                if (actionMode)
-                {
-                    for (int i=0; i<m_colorInfoList.size(); ++i)
-                    {
-                        segment(frame, m_colorInfoList[i], 1);
-                        if (getCurrentMark(objList)) //当识别到物体位置
-                        {
-                            msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
-                                       .arg(currentMark.x())
-                                       .arg(currentMark.y())
-                                       .arg(currentMark.width())
-                                       .arg(currentMark.height()));
-
-                        }
-                        else //没有识别到物体位置
-                        {
-                            msg.append("Unrecognized color\r\n");
-                        }
-                    }
-                    msg.append("@End\r\n");
-                    emit sendInfo(msg);  //发送结果给客户端
+                    continue;
                 }
 
+                segment(frame, m_targetList[targetNumber].colorInfo, 1);
+                if (getCurrentMark(objList)) //当识别到物体位置
+                {
+                    msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
+                               .arg(currentMark.x())
+                               .arg(currentMark.y())
+                               .arg(currentMark.width())
+                               .arg(currentMark.height()));
+
+                    if (moveMode != Obstacle)
+                    {
+                        compareTargetWidth(targetNumber);
+                    }
+                    calculateDirection();
+                }
+                else //没有识别到物体位置
+                {
+                    curPosition = Unknown;
+                    msg.append("Unrecognized color\r\n");
+                }
+
+                if (moveMode == Wait)
+                {
+                    msg.append(QString("Reach.Target=%1\r\n").arg(m_targetList[targetNumber].name));
+                }
+                msg.append("@End\r\n");
+                emit sendInfo(msg);  //发送结果给客户端
+
+                if (moveMode == Track)
+                {
+                    trackingTarget();
+                }
+                else if (moveMode == Access)
+                {
+                    accessTarget();
+                }
+                else if (moveMode == Obstacle)
+                {
+                    obstacleAvoidance();
+                }
             }
         }
         msleep(1);
@@ -297,7 +282,6 @@ void DiscernColor::setSelectRect(const QRect &_rect)
 {
     m_selected = true;
     m_select_rect = _rect;
-    isReady = false;
 }
 
 /**
@@ -359,7 +343,8 @@ bool DiscernColor::getCurrentMark(const vector<Object *> &objList)
 
 /**
  * @brief     根据计算识别到的标记框位置判断物体方向
- * @details   目前我们划分了一个中间区域，由g_horizontal_ratio这个值控制，该值可以通过配置文件更改
+ * @details   目前我们划分了一个中间区域，由g_horizontal_ratio这个值控制，该值可以通过配置文件更改,
+ *            另外设置了一个关于转动的区域，如果在这个区域内则执行小幅度转动，否则执行大幅度转动
  */
 
 void DiscernColor::calculateDirection()
@@ -412,16 +397,152 @@ void DiscernColor::calculateDirection()
     }
 }
 
-
 /**
- * @brief     将识别到的标记框大小与记录的标记框大小进行比较
- * @return    true则判定机器人到达标记位置，false还没有到达标记位置
+ * @brief     将当前识别到的标记框的宽度与记录的宽度作比较，从而设定接下来的动作模式
+ * @param     index  第几个目标
  */
 
-bool DiscernColor::compareMark()
+void DiscernColor::compareTargetWidth(int index)
 {
-    m_curSize = currentMark.width()*currentMark.height();
-    return m_curSize >= m_stop_size;
+    int originalWidth = m_targetList[index].maxWidth;
+    int currentWidth = currentMark.width();
+    if (currentWidth > (int)(originalWidth*g_arrive_ratio))
+    {
+        if (m_targetList[index].type == 0)
+        {
+            moveMode = Obstacle;
+        }
+        else
+        {
+            moveMode = Wait;
+        }
+    }
+    else if (currentWidth > (int)(originalWidth*g_access_ratio))
+    {
+        moveMode = Access;
+    }
+    else
+    {
+        moveMode = Track;
+    }
+}
+
+/**
+ * @brief     获取当前识别的目标
+ * @return    返回当前识别的目标，如果目标都已找到，则返回-1
+ */
+
+int DiscernColor::currentTarget() const
+{
+    for (int i=0; i<m_targetList.size(); ++i)
+    {
+        if (m_targetList[i].state == 0)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/**
+ * @brief     根据目标位置，选择动作靠近目标
+ */
+
+void DiscernColor::findTarget()
+{
+    actionStatus = Doing;
+    isReady = false;
+    switch (curPosition)
+    {
+    case Center: //前进
+        emit startMoveOn(m_nMoveOnTimeCount);
+        m_findCount = 0;
+        break;
+    case Left:  //左转
+        emit directionChanged(m_left_command);
+        m_findCount = 0;
+        break;
+    case Right: //右转
+        emit directionChanged(m_right_command);
+        m_findCount = 0;
+        break;
+    case Unknown: //没有识别到颜色,先右转，如果向右转动3次还是找不到就持续左转
+        m_findCount++;
+        if (m_findCount > 3)
+        {
+            emit directionChanged(g_left_l_command);
+        }
+        else
+        {
+            emit directionChanged(g_right_l_command);
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+/**
+ * @brief     快速靠近目标
+ */
+
+void DiscernColor::trackingTarget()
+{
+    m_nMoveOnTimeCount = g_far_move_on_time;
+    findTarget();
+}
+
+/**
+ * @brief     慢慢靠近目标
+ */
+
+void DiscernColor::accessTarget()
+{
+    m_nMoveOnTimeCount  = g_near_move_on_time;
+    findTarget();
+}
+
+/**
+ * @brief     执行避障动作
+ */
+
+void DiscernColor::obstacleAvoidance()
+{
+    qDebug()<< "----======start obstacle avoidance !";
+    actionStatus = Doing;
+    isReady = false;
+    obstacleCount++;
+    if (obstacleCount == 1 || obstacleCount == 2) //避障执行的前两次动作，转向
+    {
+        int turn = m_targetList[targetNumber].turn;
+        if(turn == 0) //左边
+        {
+            emit directionChanged(g_left_l_command);
+        }
+        else          //右边
+        {
+            emit directionChanged(g_right_l_command);
+        }
+    }
+    else if (obstacleCount == 3) //避障执行的第三次动作,前进
+    {
+        emit startMoveOn(g_far_move_on_time);
+    }
+    else if (obstacleCount == 4 || obstacleCount == 5) //恢复转向
+    {
+        int turn = m_targetList[targetNumber].turn;
+        if(turn == 0)
+        {
+            emit directionChanged(g_right_l_command);
+        }
+        else
+        {
+            emit directionChanged(g_left_l_command);
+        }
+
+        obstacleCount = 0;
+        moveMode = Track;
+    }
 }
 
 /**
@@ -512,7 +633,6 @@ void DiscernColor::segment(Mat &frame, ColorInfo &info, bool mask)
 
     for (int i = 0; i < w*h; i ++) {  //for each big pixel
         if(isVisited[i] == -1){        //-1 means it does not belong to any object yet(including the "not interested" object, which is labeled 0)
-//            int tmpLabel = getLabel(i); //i*3 inside getColor
             int tmpLabel = GetLabel(info, source, i); //i*3 inside getColor
             if(tmpLabel != 0){
                 tmpObj = new(Object);
@@ -527,7 +647,6 @@ void DiscernColor::segment(Mat &frame, ColorInfo &info, bool mask)
         while(pixelStack.empty() == false) {
             int index = pixelStack.top();
             pixelStack.pop();
-//            if(getLabel(index) == tmpObj->colorID) {   //has same color as current scanning object
              if(GetLabel(info, source, index) == tmpObj->colorID) {   //has same color as current scanning object
                     isVisited[index] = 1;   //label as current object ID
                     if(((index-w)>=0)&&(isVisited[index-w]==-1)){			//using unsigned may cause BUG here
@@ -580,6 +699,3 @@ unsigned char DiscernColor::GetLabel(ColorInfo &info, unsigned char *source, int
 {
    return info.channelLUT[0][source[3*pIndex+1]] & info.channelLUT[1][source[3*pIndex+2]];
 }
-
-
-

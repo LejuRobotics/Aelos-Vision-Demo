@@ -96,6 +96,11 @@ void SerialPort::onReadyRead()
     {
         emit actionFinished(); //发送动作完成信号
     }
+
+    else if (hexData == "3e00000000000000")  //提示电量低
+    {
+        emit lowBattery();
+    }
 }
 
 /**

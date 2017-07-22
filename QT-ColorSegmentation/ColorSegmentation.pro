@@ -21,7 +21,8 @@ SOURCES += main.cpp\
     Public/PortSetupDialog.cpp \
     Public/ServerWifiSettings.cpp \
     Public/ConnectionBox.cpp \
-    Public/LejuTbableWidget.cpp
+    Public/LejuTbableWidget.cpp \
+    Public/ParameterSettingDialog.cpp
 
 HEADERS += VideoArea.h\
     Public/painterlabel.h\
@@ -31,13 +32,15 @@ HEADERS += VideoArea.h\
     Public/PortSetupDialog.h \
     Public/ServerWifiSettings.h \
     Public/ConnectionBox.h \
-    Public/LejuTbableWidget.h
+    Public/LejuTbableWidget.h \
+    Public/ParameterSettingDialog.h
 
 FORMS    +=  VideoArea.ui\
     Public/ScanIpDiaog.ui \
     Public/PortSetupDialog.ui \
     Public/serverwifisettings.ui \
-    Public/ConnectionBox.ui
+    Public/ConnectionBox.ui \
+    Public/ParameterSettingDialog.ui
 
 PRECOMPILED_HEADER = $$PWD/precompiled.h
 
