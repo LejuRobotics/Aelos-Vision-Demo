@@ -62,6 +62,7 @@ void DiscernColor::Reset()
     actionStatus = Initial;
     moveMode = Track;
     obstacleCount = 0;
+    m_targetList.clear();
 }
 
 /**

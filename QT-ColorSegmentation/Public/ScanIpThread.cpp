@@ -96,6 +96,7 @@ void ScanIpThread::stop()
 void ScanIpThread::run()
 {
     QTcpSocket socket;
+    socket.setProxy(QNetworkProxy::NoProxy);
     QDataStream in(&socket);
     in.setVersion(QDataStream::Qt_5_3);
     QByteArray inBlock;

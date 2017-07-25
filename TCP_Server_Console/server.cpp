@@ -156,7 +156,10 @@ void Server::playAudio(Server::CueTone type)
     arguments << musicName;
 
     if (mplayer->isOpen())
+    {
+        mplayer->waitForFinished();
         mplayer->close();
+    }
 
     mplayer->start(program, arguments);
 }

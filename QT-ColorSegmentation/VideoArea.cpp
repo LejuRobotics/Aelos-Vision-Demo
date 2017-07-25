@@ -51,11 +51,6 @@ VideoArea::VideoArea(QWidget *parent) :
     connect(ui->action_Server_wifi, SIGNAL(triggered(bool)), this, SLOT(onActionServerWifiClicked()));
     connect(ui->actionParam_setting, SIGNAL(triggered(bool)), this, SLOT(onActionParamSettingClicked()));
 
-    radio_btn_group = new QButtonGroup(this);
-    radio_btn_group->addButton(ui->auto_radio,0);
-    radio_btn_group->addButton(ui->manual_radio,1);
-    connect(radio_btn_group, SIGNAL(buttonToggled(int,bool)), this, SLOT(onRadioGroupClicked(int,bool)));
-
     camera_with = 320;
     camera_height = 240;
     m_centerAreaRatio = 0.4;
@@ -95,6 +90,7 @@ VideoArea::VideoArea(QWidget *parent) :
 
     QNetworkProxyFactory::setUseSystemConfiguration(false);
     m_long_socket = new QTcpSocket(this);
+    m_long_socket->setProxy(QNetworkProxy::NoProxy);
     connect(m_long_socket, SIGNAL(readyRead()),this,SLOT(onLongSocketReadyRead()));
     connect(m_long_socket,SIGNAL(disconnected()), this, SLOT(onSocketDisconnect()));
 
@@ -321,10 +317,7 @@ void VideoArea::onSocketDisconnect()
     ui->textEdit->append(QString("disconect to %1!").arg(m_server_ip));
     m_isConnected = false;
 
-    if (m_timer->isActive())
-    {
-        m_timer->stop();
-    }
+    m_timer->stop();
     if (!ui->manual_radio->isChecked())
     {
         ui->manual_radio->setChecked(true);
@@ -372,7 +365,7 @@ void VideoArea:: onUdpSocketReadyRead()
                 ui->video_label->setPixmap(QPixmap::fromImage(m_load_image));
             }
             m_frame_count++;
-            if (!m_timer->isActive())
+            if (!m_timer->isActive() && m_isConnected)
             {
                 m_timer->start(1000);
             }
@@ -579,42 +572,50 @@ void VideoArea::on_reset_btn_clicked()
     ui->record_btn->setEnabled(true);
     QString cmd("RESET");
     WriteData(cmd.toUtf8());
+
+    ui->manual_radio->setChecked(true);
+    for (int i=ui->tableWidget->rowCount()-1; i>-1; --i)
+    {
+        ui->tableWidget->removeRow(i);
+    }
 }
 
 /**
- * @brief    点击manual或auto执行的槽函数
- * @details  nanual状态下，可以通过Quick walk等按钮直接手动控制机器人动作，
- *           如果已经标记过物体，点击aoto，机器人会根据识别到的标记框位置自动前进
+ * @brief    点击auto执行的槽函数,如果已经选中好目标，则开始自动接近目标
+ * @param    checked  选中状态
  */
 
-void VideoArea::onRadioGroupClicked(int btnID, bool checked)
+void VideoArea::on_auto_radio_clicked(bool checked)
 {
     if (checked)
     {
-        QString cmd;
-        switch (btnID)
+        for (int i=0; i<btnList.size(); ++i)
         {
-        case 0: //自动
-            for (int i=0; i<btnList.size(); ++i)
-            {
-                btnList[i]->setEnabled(false);
-            }
-            cmd = "set Robot.Action=auto";
-            break;
-        case 1: //手动
-            for (int i=0; i<btnList.size(); ++i)
-            {
-                btnList[i]->setEnabled(true);
-            }
-            cmd = "set Robot.Action=manual";
-            break;
-        default:
-            break;
+            btnList[i]->setEnabled(false);
         }
-        if (!cmd.isEmpty())
-           WriteData(cmd.toUtf8());
+        QString cmd = "set Robot.Action=auto";
+        WriteData(cmd.toUtf8());
     }
 }
+
+/**
+ * @brief    点击manual执行的槽函数,手动控制机器人动作，如果机器人正在自动行走，将会暂停动作
+ * @param    checked  选中状态
+ */
+
+void VideoArea::on_manual_radio_clicked(bool checked)
+{
+    if (checked)
+    {
+        for (int i=0; i<btnList.size(); ++i)
+        {
+            btnList[i]->setEnabled(true);
+        }
+        QString cmd = "set Robot.Action=manual";
+        WriteData(cmd.toUtf8());
+    }
+}
+
 
 /**
  * @brief    点击Quick walk,Quick back等按钮控制机器人动作
