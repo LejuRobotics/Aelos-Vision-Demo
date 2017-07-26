@@ -60,7 +60,8 @@ private slots:
 
     void on_record_btn_clicked();  //点击Record按钮
     void on_reset_btn_clicked();   //点击Reset按钮
-    void onRadioGroupClicked(int btnID, bool checked); //点击 acuto 或者 manual按钮
+    void on_auto_radio_clicked(bool checked);  //点击auto按钮
+    void on_manual_radio_clicked(bool checked); //点击manual按钮
     void onActionButtonGroupClicked(int btnID);  //点击动作按钮，如Quick walk, Quick back等
 
     void onUdpPortChanged();
@@ -68,8 +69,11 @@ private slots:
 
     void onSliderTimeout();
 
+    //选择图像格式
     void on_rgb_radio_toggled(bool checked);
     void on_yuv_radio_toggled(bool checked);
+
+    //亮度，对比度，Y值滚动条
     void on_colorY_slider_valueChanged(int value);
     void on_brightness_slider_valueChanged(int value);
     void on_contrast_slider_valueChanged(int value);
@@ -94,7 +98,6 @@ private:
 
     QList<QPushButton*> btnList;
     QButtonGroup *action_btn_group;
-    QButtonGroup *radio_btn_group;
 
     PortSetupDialog *portSetupDialog;
     ScanIpDiaog *scanIpDialog;
