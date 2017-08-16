@@ -38,7 +38,7 @@
 #include <stack>
 
 /*************************************************************
- * 声明全局变量，在server.cpp文件中定义，这些变量可以在配置文件中更改
+ * 声明全局变量，在main.cpp文件中定义，这些变量可以在配置文件中更改
  *************************************************************/
 
 extern QString g_serial_name;             /**< 串口名称 */
@@ -61,7 +61,14 @@ extern int g_ping_router_count;           /**< 程序启动后ping路由器的�
 extern QString g_robot_number;            /**< 机器人编号 */
 extern int g_far_move_on_time;            /**< 离目标较远的时候，快走的时长 */
 extern int g_near_move_on_time;           /**< 离目标较近的时候，快走的时长 */
-extern double g_arrive_ratio;             /**< 判读到达指定目标位置的标记框的宽的比例*/
+extern double g_arrive_ratio;             /**< 判读到达指定目标位置的标记框的宽的比例 */
 extern double g_access_ratio;             /**< 当前标记框的宽度大于记录的标记框宽度乘以这个比例，则执行慢慢靠近的动作模式 */
+extern int g_log_file_switch;             /**< 是否保存程序打印日志，0否，1是 */
+
+
+/*************************************************************
+ * 声明全局变量，方便多个文件中使用
+ *************************************************************/
+extern QString G_Image_Format;            /**< 图片格式 */
 
 #endif // GLOBAL_VAR_H

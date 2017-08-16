@@ -72,11 +72,18 @@ private slots:
     //选择图像格式
     void on_rgb_radio_toggled(bool checked);
     void on_yuv_radio_toggled(bool checked);
+    void on_hsv_radio_toggled(bool checked);
 
-    //亮度，对比度，Y值滚动条
+    //亮度，对比度，Y值, HSV值滚动条
     void on_colorY_slider_valueChanged(int value);
     void on_brightness_slider_valueChanged(int value);
     void on_contrast_slider_valueChanged(int value);
+    void on_colorMinH_slider_valueChanged(int value);
+    void on_colorMinS_slider_valueChanged(int value);
+    void on_colorMinV_slider_valueChanged(int value);
+    void on_colorMaxH_slider_valueChanged(int value);
+    void on_colorMaxS_slider_valueChanged(int value);
+    void on_colorMaxV_slider_valueChanged(int value);
 
     void addInfomation(const QString &msg);
 

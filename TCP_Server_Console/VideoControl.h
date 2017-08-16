@@ -30,8 +30,8 @@ public:
     void stop();
     void setBrightness(double val);
     void setContrast(int val);
-    void setImageFormat(const QString &format);
     void setCameraResolution(int w, int h);
+    void setHsvInRange(const QString &type, int val);
 
 private slots:
     void restartCamera();
@@ -56,10 +56,11 @@ private:
     QImage *rgbImg;
     Mat yuv_mat;
     QImage *yuvImg;
+    Mat hsv_mat;
+    QImage *hsvImg;
 
     double alpha;             /**< 亮度 */
     int beta;                 /**< 对比度 */
-    QString m_iamge_format;   /**< 图片格式 */
 };
 
 #endif // VIDEOCONTROL_H
