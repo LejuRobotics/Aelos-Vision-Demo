@@ -21,7 +21,6 @@ VideoControl::VideoControl(QObject *parent) : QThread(parent)
     isSendFrame = true;
     alpha = 1.0;
     beta = 0;
-    m_iamge_format = "RGB";
 }
 
 /**
@@ -89,16 +88,6 @@ void VideoControl::setContrast(int val)
 }
 
 /**
- * @brief     设置图片显示模式
- * @param     format 图片格式
- */
-
-void VideoControl::setImageFormat(const QString &format)
-{
-    m_iamge_format = format;
-}
-
-/**
  * @brief     设置摄像头分辨率
  * @param     w 宽
  * @param     h 高
@@ -116,6 +105,41 @@ void VideoControl::setCameraResolution(int w, int h)
             g_frame_quality = -1;
         }
         QTimer::singleShot(1500, this, SLOT(restartCamera()));
+    }
+}
+
+/**
+ * @brief     设置通过hsv识别颜色的参数大小
+ * @param     type 类型
+ * @param     val 大小
+ */
+
+void VideoControl::setHsvInRange(const QString &type, int val)
+{
+//    qDebug()<< "setHsvInRange: "<<type<<val;
+    if (type == "MinH")
+    {
+        g_hsv_lower[0] = val;
+    }
+    else if (type == "MinS")
+    {
+        g_hsv_lower[1] = val;
+    }
+    else if (type == "MinV")
+    {
+        g_hsv_lower[2] = val;
+    }
+    else if (type == "MaxH")
+    {
+        g_hsv_upper[0] = val;
+    }
+    else if (type == "MaxS")
+    {
+        g_hsv_upper[1] = val;
+    }
+    else if (type == "MaxV")
+    {
+        g_hsv_upper[2] = val;
     }
 }
 
@@ -194,11 +218,11 @@ void VideoControl::run()
             QBuffer buf(&byte);
             buf.open(QIODevice::WriteOnly);
 
-            if (m_iamge_format == "RGB")
+            if (G_Image_Format == "RGB")
             {
                 rgbImg->save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
             }
-            else if (m_iamge_format == "YUV")
+            else if (G_Image_Format == "YUV")
             {
                 cv::cvtColor(frame, yuv_mat,CV_BGR2YUV);
                 for(int i = 0; i < g_frame_height; i++)
@@ -213,6 +237,55 @@ void VideoControl::run()
                 yuvImg = new QImage((uchar*) yuv_mat.data, yuv_mat.cols, yuv_mat.rows,
                                     yuv_mat.cols*yuv_mat.channels(), QImage::Format_RGB888);
                 yuvImg->save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
+            }
+            else if (G_Image_Format == "HSV")
+            {
+                //转到HSV空间
+                cvtColor(frame,hsv_mat,COLOR_BGR2HSV);
+
+                //根据阈值构建掩膜
+                inRange(hsv_mat, g_hsv_lower, g_hsv_upper, hsv_mat);
+
+                int g_nStructElementSize = 9; //结构元素(内核矩阵)的尺寸
+                cv::Mat str_el = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(g_nStructElementSize, g_nStructElementSize));
+
+                //腐蚀操作
+                erode(hsv_mat, hsv_mat, str_el);
+                //膨胀操作，其实先腐蚀再膨胀的效果是开运算，去除噪点
+                dilate(hsv_mat, hsv_mat, str_el);
+
+                //轮廓检测
+                vector<vector<Point> > contours;
+                findContours(hsv_mat, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+                vector<Moments>mu(contours.size());
+                vector<Point2f>mc(contours.size());
+                vector<double> areaVec;
+                for (size_t i=0; i<contours.size(); ++i)
+                {
+                    //计算轮廓的面积
+                    double tmparea = fabs(contourArea(contours[i]));
+                    areaVec.push_back(tmparea);
+
+                    mu[i] = moments(contours[i], false);
+                    mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+                }
+
+                //选择最大面积的轮廓
+                int max_pos = (int)(max_element(areaVec.begin(), areaVec.end()) - areaVec.begin());
+
+                cvtColor(hsv_mat,hsv_mat,COLOR_GRAY2RGB);
+                if (max_pos < (int)contours.size())
+                {
+
+                    Rect findRect = boundingRect(contours[max_pos]);
+                    rectangle(hsv_mat, findRect, Scalar(0,255,0),2);
+                    circle(hsv_mat, mc[max_pos], 5, Scalar(0,0,255)); //在重心坐标画圆
+                }
+                hsvImg = new QImage((uchar*) hsv_mat.data, hsv_mat.cols, hsv_mat.rows,
+                                    hsv_mat.cols*hsv_mat.channels(), QImage::Format_RGB888);
+
+                hsvImg->save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
             }
 
             QByteArray datagram;
@@ -231,5 +304,4 @@ void VideoControl::run()
         cap.release();
     }
 }
-
 

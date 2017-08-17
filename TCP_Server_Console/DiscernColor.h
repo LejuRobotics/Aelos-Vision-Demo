@@ -17,7 +17,9 @@
 using namespace cv;
 using namespace std;
 
-extern int g_color_channel_Y; /* YUV格式的Y通道 */
+extern int g_color_channel_Y; /** < YUV格式的Y通道 */
+extern Scalar g_hsv_lower;
+extern Scalar g_hsv_upper;
 
 /**
  * @class     DiscernColor
@@ -35,7 +37,14 @@ public:
      * @brief 识别到的标记框的位置
      */
 
-    enum Position{ Unknown, Left, Right, Center };
+    enum Position{
+        Unknown,
+        LeftNear,
+        LeftFar,
+        RightNear,
+        RightFar,
+        Center
+    };
 
     /**
      * @brief 机器人动作状态
@@ -86,16 +95,28 @@ public:
         int state;              /**< 状态，0未完成，1已完成 */
     };
 
+    struct HSV_Target {
+        QString name;           /**< 目标名称 */
+        int type;               /**< 目标类型，0障碍物，1目标 */
+        int maxWidth;           /**< 在停止靠近目标的位置识别到的标记框宽度 */
+        int turn;               /**< 避障转动方向，0左边，1右边 */
+        Scalar hsvLower;
+        Scalar hsvUpper;
+        int state;              /**< 状态，0未完成，1已完成 */
+    };
+
     void Reset();
     void setSelectRect(const QRect &_rect);
-    void addTarget(const QString &name, int width, int type, int turn);
-    void setTargetType(int index, int type);
-    void setTargetTurn(int index, int turn);
-    void removeTarget(int index);
+    bool addTarget(const QStringList &list);
+    bool setTargetType(int index, int type);
+    bool setTargetTurn(int index, int turn);
+    bool removeTarget(int index);
     void setActionMode(int mode);
     void setActionStatus(ActionStatus status);
     void setActionReady();
     void setColorChannelY(int val);
+
+    void startAddHsvTarget();
 
 public slots:
     void readFrame(QImage *image);
@@ -109,8 +130,14 @@ signals:
     void startMoveOn(int msec);
 
 private:
+    void findColorFromYUV(Mat &frame);
+    void findColorFaromHSV(Mat &frame);
+
+    void findContoursFromHSV(Mat &frame, int type);
+
     bool getCurrentMark(const vector<Object*> &objList);
     void calculateDirection();
+    void calculateDirection2(const QPoint &pos);
     void compareTargetWidth(int index);
     int  currentTarget() const;
 
@@ -135,6 +162,7 @@ private:
     Position curPosition;          /**< 当前目标所在的方向 */
 
     QRect currentMark;             /**< 识别物体的标记框位置 */
+    QPoint currentCenterPoint;
     int actionMode;                /**< 动作模式: 0,手动(测试阶段默认)  1,自动 */
     bool isReady;                  /**< 是否做好动作准备 */
 
@@ -147,9 +175,6 @@ private:
     int m_findCount;
     int m_nMoveOnTimeCount;
 
-    int m_left_command;
-    int m_right_command;
-
     QString m_mark_rgb;                 /**< 标记框颜色 */
     ColorInfo colorInfo;                /**< 记录标记的颜色的信息 */
     std::vector<Object*> objList;       /**< 识别到颜色位置的对象的容器 */
@@ -158,6 +183,15 @@ private:
     int h;
 
     QList<Target> m_targetList;        /**< 记录目标的容器 */
+
+    Mat hsv_mat;
+    bool m_bAddHsvFlag;
+    Rect m_hsvCurrentMark;
+    int m_hsvTargetNum;
+    QList<HSV_Target> m_hsvTargetList;
+
+    vector<vector<Point> > contours;
+
 };
 
 #endif // DISCERNCOLOR_H

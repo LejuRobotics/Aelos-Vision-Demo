@@ -88,7 +88,6 @@ private:
     int m_pingCount;
     QString m_shellName;
 
-    void readConfigFile();
     void WriteMsg(const QByteArray &msg);
     void WriteSerial(int val);
     void WriteSerial2(const QString &val);

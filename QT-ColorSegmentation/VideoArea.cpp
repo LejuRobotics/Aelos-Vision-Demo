@@ -120,6 +120,9 @@ VideoArea::~VideoArea()
 
 void VideoArea::WriteData(const QByteArray &msg)
 {
+    if (msg.isEmpty())
+        return;
+
     QByteArray outBlock;
     QDataStream out(&outBlock,QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_5_3);
@@ -289,6 +292,7 @@ void VideoArea::onLongSocketReadyRead()
            else if (item.startsWith("Reach.Target="))
            {
                ui->manual_radio->setChecked(true);
+               on_manual_radio_clicked(true);
            }
            else if (item.startsWith("Unrecognized color"))
            {
@@ -302,6 +306,44 @@ void VideoArea::onLongSocketReadyRead()
                {
                    ui->record_btn->setEnabled(true);
                }
+           }
+        }
+    }
+    else if (readData.startsWith("@Begin HSV:"))
+    {
+        QStringList list = readData.split("\r\n");
+        foreach (QString item, list) {
+           if (item.startsWith("Mark.Rect="))
+           {
+
+           }
+           else if (item.startsWith("Reach.Target="))
+           {
+               ui->manual_radio->setChecked(true);
+               on_manual_radio_clicked(true);
+           }
+           else if (item.startsWith("Unrecognized color"))
+           {
+
+           }
+           else if (item.startsWith("Max.Width"))
+           {
+               int maxWidth = item.mid(item.indexOf("=")+1).toInt();
+               QString time = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+               ui->tableWidget->addItem(time,"0,255,0",maxWidth);
+
+               QString cmd = QString("Add Target=%1,%2,%3,%4,%5,%6,%7,%8,%9,%10")
+                       .arg(ui->tableWidget->lastName())
+                       .arg(maxWidth)
+                       .arg(ui->tableWidget->lastType())
+                       .arg(ui->tableWidget->lastTurn())
+                       .arg(ui->colorMinH_slider->value())
+                       .arg(ui->colorMinS_slider->value())
+                       .arg(ui->colorMinV_slider->value())
+                       .arg(ui->colorMaxH_slider->value())
+                       .arg(ui->colorMaxS_slider->value())
+                       .arg(ui->colorMaxV_slider->value());
+               WriteData(cmd.toUtf8());
            }
         }
     }
@@ -551,15 +593,24 @@ void VideoArea::on_record_btn_clicked()
         QMessageBox::information(0, tr("提示"), tr("目前最多只能添加6个"),QMessageBox::Ok);
         return;
     }
-    ui->record_btn->setEnabled(false);
-    QString time = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-    ui->tableWidget->addItem(time,m_mark_rgb,m_original_rect.width());
+    QString cmd;
+    if (!ui->hsv_radio->isChecked()) //RGB,YUV格式
+    {
+        ui->record_btn->setEnabled(false);
+        QString time = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+        ui->tableWidget->addItem(time,m_mark_rgb,m_original_rect.width());
 
-    QString cmd = QString("Add Target=%1,%2,%3,%4")
-            .arg(ui->tableWidget->lastName())
-            .arg(m_original_rect.width())
-            .arg(ui->tableWidget->lastType())
-            .arg(ui->tableWidget->lastTurn());
+        cmd = QString("Add Target=%1,%2,%3,%4")
+                .arg(ui->tableWidget->lastName())
+                .arg(m_original_rect.width())
+                .arg(ui->tableWidget->lastType())
+                .arg(ui->tableWidget->lastTurn());
+    }
+    else  // HSV格式
+    {
+        cmd = QString("Start Add HSV.Target");
+    }
+
     WriteData(cmd.toUtf8());
 }
 
@@ -683,7 +734,7 @@ void VideoArea::startSliderTimer()
 {
     if (!m_sliderTimer->isActive())
     {
-        m_sliderTimer->start(200);
+        m_sliderTimer->start(300);
     }
 }
 
@@ -705,8 +756,13 @@ void VideoArea::on_rgb_radio_toggled(bool checked)
 {
     if (checked)
     {
-       QString msg("set Image.Format=RGB");
-       WriteData(msg.toUtf8());
+        ui->record_btn->setEnabled(false);
+        ui->colorY_label->setEnabled(false);
+        ui->colorY_slider->setEnabled(false);
+        ui->hsvGroupBox->setEnabled(false);
+
+        QString msg("set Image.Format=RGB");
+        WriteData(msg.toUtf8());
     }
 }
 
@@ -718,8 +774,37 @@ void VideoArea::on_yuv_radio_toggled(bool checked)
 {
     if (checked)
     {
-       QString msg("set Image.Format=YUV");
-       WriteData(msg.toUtf8());
+        ui->record_btn->setEnabled(false);
+        ui->colorY_label->setEnabled(true);
+        ui->colorY_slider->setEnabled(true);
+        ui->hsvGroupBox->setEnabled(false);
+
+        QString msg("set Image.Format=YUV");
+        WriteData(msg.toUtf8());
+    }
+}
+
+/**
+ * @brief    当选择HSV按钮的时候，设置图片格式为HSV
+ */
+
+void VideoArea::on_hsv_radio_toggled(bool checked)
+{
+    if (checked)
+    {
+        ui->record_btn->setEnabled(true);
+        ui->colorY_label->setEnabled(false);
+        ui->colorY_slider->setEnabled(false);
+        ui->hsvGroupBox->setEnabled(true);
+
+        QString msg = QString("set Image.Format=HSV,%1,%2,%3,%4,%5,%6")
+                .arg(ui->colorMinH_slider->value())
+                .arg(ui->colorMinS_slider->value())
+                .arg(ui->colorMinV_slider->value())
+                .arg(ui->colorMaxH_slider->value())
+                .arg(ui->colorMaxS_slider->value())
+                .arg(ui->colorMaxV_slider->value());
+        WriteData(msg.toUtf8());
     }
 }
 
@@ -760,6 +845,48 @@ void VideoArea::on_contrast_slider_valueChanged(int value)
 {
     ui->contrast_label->setText(QString("Contrast: %1").arg(value));
     m_command = QString("set Color.Contrast=%1").arg(value);
+    startSliderTimer();
+}
+
+void VideoArea::on_colorMinH_slider_valueChanged(int value)
+{
+    ui->colorMinH_label->setText(QString("MinH: %1").arg(value));
+    m_command = QString("set HSV.Channel.MinH=%1").arg(value);
+    startSliderTimer();
+}
+
+void VideoArea::on_colorMinS_slider_valueChanged(int value)
+{
+    ui->colorMinS_label->setText(QString("MinS: %1").arg(value));
+    m_command = QString("set HSV.Channel.MinS=%1").arg(value);
+    startSliderTimer();
+}
+
+void VideoArea::on_colorMinV_slider_valueChanged(int value)
+{
+    ui->colorMinV_label->setText(QString("MinV: %1").arg(value));
+    m_command = QString("set HSV.Channel.MinV=%1").arg(value);
+    startSliderTimer();
+}
+
+void VideoArea::on_colorMaxH_slider_valueChanged(int value)
+{
+    ui->colorMaxH_label->setText(QString("MaxH: %1").arg(value));
+    m_command = QString("set HSV.Channel.MaxH=%1").arg(value);
+    startSliderTimer();
+}
+
+void VideoArea::on_colorMaxS_slider_valueChanged(int value)
+{
+    ui->colorMaxS_label->setText(QString("MaxS: %1").arg(value));
+    m_command = QString("set HSV.Channel.MaxS=%1").arg(value);
+    startSliderTimer();
+}
+
+void VideoArea::on_colorMaxV_slider_valueChanged(int value)
+{
+    ui->colorMaxV_label->setText(QString("MaxV: %1").arg(value));
+    m_command = QString("set HSV.Channel.MaxV=%1").arg(value);
     startSliderTimer();
 }
 

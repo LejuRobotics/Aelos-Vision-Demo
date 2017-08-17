@@ -11,6 +11,8 @@
 #include "DiscernColor.h"
 
 int g_color_channel_Y = 128;
+Scalar g_hsv_lower;
+Scalar g_hsv_upper;
 
 /**
  * @brief     DiscernColor类的构造函数，初始化
@@ -25,14 +27,13 @@ DiscernColor::DiscernColor(QObject *parent) : QThread(parent)
     actionMode = 0;
     actionStatus = Initial;
     moveMode = Track;
-    m_left_command = 3;
-    m_right_command = 4;
     w = g_frame_width;
     h = g_frame_height;
     sizeThreshold = 100;
     obstacleCount = 0;
     m_findCount = 0;
     m_nMoveOnTimeCount = 3000;
+    m_bAddHsvFlag = false;
 }
 
 /**
@@ -63,6 +64,7 @@ void DiscernColor::Reset()
     moveMode = Track;
     obstacleCount = 0;
     m_targetList.clear();
+    m_hsvTargetList.clear();
 }
 
 /**
@@ -73,16 +75,44 @@ void DiscernColor::Reset()
  * @param      turn  做避障动作时的转动方向
  */
 
-void DiscernColor::addTarget(const QString &name, int width, int type, int turn)
+bool DiscernColor::addTarget(const QStringList &list)
 {
-    Target obj;
-    obj.name = name;
-    obj.maxWidth = width;
-    obj.type = type;
-    obj.turn = turn;
-    obj.colorInfo = colorInfo;
-    obj.state = 0;
-    m_targetList << obj;
+    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    {
+        if (list.length() != 4)
+            return false;
+
+        Target obj;
+        obj.name = list[0];
+        obj.maxWidth = list[1].toInt();
+        obj.type = list[2].toInt();
+        obj.turn = list[3].toInt();
+        obj.colorInfo = colorInfo;
+        obj.state = 0;
+        m_targetList << obj;
+        return true;
+    }
+    else if (G_Image_Format == "HSV")
+    {
+        if (list.length() != 10)
+            return false;
+
+        HSV_Target tempObj;
+        tempObj.name = list[0];
+        tempObj.maxWidth = list[1].toInt();
+        tempObj.type = list[2].toInt();
+        tempObj.turn = list[3].toInt();
+        tempObj.hsvLower[0] = list[4].toInt();
+        tempObj.hsvLower[1] = list[5].toInt();
+        tempObj.hsvLower[2] = list[6].toInt();
+        tempObj.hsvUpper[0] = list[7].toInt();
+        tempObj.hsvUpper[1] = list[8].toInt();
+        tempObj.hsvUpper[2] = list[9].toInt();
+        tempObj.state = 0;
+        m_hsvTargetList << tempObj;
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -91,10 +121,25 @@ void DiscernColor::addTarget(const QString &name, int width, int type, int turn)
  * @param     type   目标类型,0障碍物, 1目标
  */
 
-void DiscernColor::setTargetType(int index, int type)
+bool DiscernColor::setTargetType(int index, int type)
 {
-    if (index < m_targetList.size())
-        m_targetList[index].type = type;
+    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    {
+        if (index < m_targetList.size())
+        {
+            m_targetList[index].type = type;
+            return true;
+        }
+    }
+    else if (G_Image_Format == "HSV")
+    {
+        if (index < m_hsvTargetList.size())
+        {
+            m_hsvTargetList[index].type = type;
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
@@ -103,10 +148,25 @@ void DiscernColor::setTargetType(int index, int type)
  * @param     type   转动方向,0左边, 1右边
  */
 
-void DiscernColor::setTargetTurn(int index, int turn)
+bool DiscernColor::setTargetTurn(int index, int turn)
 {
-    if (index < m_targetList.size())
-        m_targetList[index].turn = turn;
+    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    {
+        if (index < m_targetList.size())
+        {
+            m_targetList[index].turn = turn;
+            return true;
+        }
+    }
+    else if (G_Image_Format == "HSV")
+    {
+        if (index < m_hsvTargetList.size())
+        {
+            m_hsvTargetList[index].turn = turn;
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
@@ -114,10 +174,26 @@ void DiscernColor::setTargetTurn(int index, int turn)
  * @param     index  第几个目标
  */
 
-void DiscernColor::removeTarget(int index)
+bool DiscernColor::removeTarget(int index)
 {
-    if (index < m_targetList.size())
-        m_targetList.removeAt(index);
+    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    {
+        if (index < m_targetList.size())
+        {
+            m_targetList.removeAt(index);
+            return true;
+        }
+    }
+    else if (G_Image_Format == "HSV")
+    {
+        if (index < m_hsvTargetList.size())
+        {
+            m_hsvTargetList.removeAt(index);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -160,6 +236,11 @@ void DiscernColor::setActionReady()
     isReady = true;
 }
 
+void DiscernColor::startAddHsvTarget()
+{
+    m_bAddHsvFlag = true;
+}
+
 /**
  * @brief     接收每一帧图片放到线程中处理
  * @param     iamge 图片
@@ -191,86 +272,228 @@ void DiscernColor::run()
         //把QImage转为Mat，格式为RGB
         frame = Mat(nextImage.height(), nextImage.width(), CV_8UC3, (void*)nextImage.constBits(), nextImage.bytesPerLine());
 
-        QString msg("@Begin:\r\n");
-        if(m_selected)  //当客户端标记一个颜色时
+        if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
         {
-            addColor(frame);
-            segment(frame, colorInfo, 1);
+            findColorFromYUV(frame);
+        }
+        else if (G_Image_Format == "HSV")
+        {
+            findColorFaromHSV(frame);
+        }
+
+        msleep(1);
+    }
+}
+
+void DiscernColor::findColorFromYUV(Mat &frame)
+{
+    QString msg("@Begin:\r\n");
+    if(m_selected)  //当客户端标记一个颜色时
+    {
+        addColor(frame);
+        segment(frame, colorInfo, 1);
+        if (getCurrentMark(objList)) //当识别到物体位置
+        {
+            if (!m_mark_rgb.isEmpty())
+            {
+                msg.append(m_mark_rgb);
+                m_mark_rgb.clear();
+            }
+            msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
+                       .arg(currentMark.x())
+                       .arg(currentMark.y())
+                       .arg(currentMark.width())
+                       .arg(currentMark.height()));
+
+        }
+        else //没有识别到物体位置
+        {
+            msg.append("Unrecognized color\r\n");
+        }
+        msg.append("@End\r\n");
+        emit sendInfo(msg);  //发送结果给客户端
+        m_selected = false;
+    }
+    else
+    {
+        if (actionMode == 1) //自动
+        {
+            targetNumber = currentTarget();
+            if (actionStatus == Doing || !isReady || targetNumber == -1 || moveMode == Wait)
+            {
+//                continue;
+                return;
+            }
+
+            segment(frame, m_targetList[targetNumber].colorInfo, 1);
             if (getCurrentMark(objList)) //当识别到物体位置
             {
-                if (!m_mark_rgb.isEmpty())
-                {
-                    msg.append(m_mark_rgb);
-                    m_mark_rgb.clear();
-                }
                 msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
                            .arg(currentMark.x())
                            .arg(currentMark.y())
                            .arg(currentMark.width())
                            .arg(currentMark.height()));
 
+                if (moveMode != Obstacle)
+                {
+                    compareTargetWidth(targetNumber);
+                }
+                calculateDirection2(currentCenterPoint);
             }
             else //没有识别到物体位置
             {
+                curPosition = Unknown;
                 msg.append("Unrecognized color\r\n");
+            }
+
+            if (moveMode == Wait)
+            {
+                msg.append(QString("Reach.Target=%1\r\n").arg(m_targetList[targetNumber].name));
             }
             msg.append("@End\r\n");
             emit sendInfo(msg);  //发送结果给客户端
-            m_selected = false;
+
+            if (moveMode == Track)
+            {
+                trackingTarget();
+            }
+            else if (moveMode == Access)
+            {
+                accessTarget();
+            }
+            else if (moveMode == Obstacle)
+            {
+                obstacleAvoidance();
+            }
+        }
+    }
+}
+
+void DiscernColor::findColorFaromHSV(Mat &frame)
+{
+    if (m_bAddHsvFlag)
+    {
+        findContoursFromHSV(frame, 0);
+        m_bAddHsvFlag = false;
+    }
+    else
+    {
+        if (actionMode == 1) //自动
+        {
+            findContoursFromHSV(frame, 1);
+        }
+    }
+}
+
+void DiscernColor::findContoursFromHSV(Mat &frame, int type)
+{
+    if (type == 0)
+    {
+        //转到HSV空间
+        cvtColor(frame,hsv_mat,COLOR_RGB2HSV);
+
+        //根据阈值构建掩膜
+        inRange(hsv_mat, g_hsv_lower, g_hsv_upper, hsv_mat);
+    }
+    else
+    {
+        m_hsvTargetNum = currentTarget();
+        if (actionStatus == Doing || !isReady || m_hsvTargetNum == -1 || moveMode == Wait)
+        {
+            return;
+        }
+
+        g_hsv_lower = m_hsvTargetList[m_hsvTargetNum].hsvLower;
+        g_hsv_upper = m_hsvTargetList[m_hsvTargetNum].hsvUpper;
+
+        //转到HSV空间
+        cvtColor(frame,hsv_mat,COLOR_RGB2HSV);
+
+        //根据阈值构建掩膜
+        inRange(hsv_mat, m_hsvTargetList[m_hsvTargetNum].hsvLower, m_hsvTargetList[m_hsvTargetNum].hsvUpper, hsv_mat);
+    }
+
+    int g_nStructElementSize = 9; //结构元素(内核矩阵)的尺寸
+    cv::Mat str_el = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(g_nStructElementSize, g_nStructElementSize));
+
+    //腐蚀操作
+    erode(hsv_mat, hsv_mat, str_el);
+    //膨胀操作，其实先腐蚀再膨胀的效果是开运算，去除噪点
+    dilate(hsv_mat, hsv_mat, str_el);
+
+    //轮廓检测
+    vector<vector<Point> > contours;
+    findContours(hsv_mat, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+//        if ((int)contours.size() < 0)
+//            return;
+
+    vector<Moments>mu(contours.size());
+    vector<Point2f>mc(contours.size());
+    vector<double> areaVec;
+    for (size_t i=0; i<contours.size(); ++i)
+    {
+        //计算轮廓的面积
+        double tmparea = fabs(contourArea(contours[i]));
+        areaVec.push_back(tmparea);
+
+        mu[i] = moments(contours[i], false);
+        mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+    }
+
+    int max_pos = (int)(max_element(areaVec.begin(), areaVec.end()) - areaVec.begin());
+
+    QString msg("@Begin HSV:\r\n");
+    if (max_pos < (int)contours.size())
+    {
+        m_hsvCurrentMark = boundingRect(contours[max_pos]);
+        if (type == 0)
+        {
+            msg.append(QString("Max.Width=%1\r\n").arg(m_hsvCurrentMark.width));
         }
         else
         {
-            if (actionMode == 1) //自动
+            msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
+                       .arg(m_hsvCurrentMark.x)
+                       .arg(m_hsvCurrentMark.y)
+                       .arg(m_hsvCurrentMark.width)
+                       .arg(m_hsvCurrentMark.height));
+
+            if (moveMode != Obstacle)
             {
-                targetNumber = currentTarget();
-                if (actionStatus == Doing || !isReady || targetNumber == -1 || moveMode == Wait)
-                {
-                    continue;
-                }
-
-                segment(frame, m_targetList[targetNumber].colorInfo, 1);
-                if (getCurrentMark(objList)) //当识别到物体位置
-                {
-                    msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
-                               .arg(currentMark.x())
-                               .arg(currentMark.y())
-                               .arg(currentMark.width())
-                               .arg(currentMark.height()));
-
-                    if (moveMode != Obstacle)
-                    {
-                        compareTargetWidth(targetNumber);
-                    }
-                    calculateDirection();
-                }
-                else //没有识别到物体位置
-                {
-                    curPosition = Unknown;
-                    msg.append("Unrecognized color\r\n");
-                }
-
-                if (moveMode == Wait)
-                {
-                    msg.append(QString("Reach.Target=%1\r\n").arg(m_targetList[targetNumber].name));
-                }
-                msg.append("@End\r\n");
-                emit sendInfo(msg);  //发送结果给客户端
-
-                if (moveMode == Track)
-                {
-                    trackingTarget();
-                }
-                else if (moveMode == Access)
-                {
-                    accessTarget();
-                }
-                else if (moveMode == Obstacle)
-                {
-                    obstacleAvoidance();
-                }
+                compareTargetWidth(m_hsvTargetNum);
             }
+            QPoint pos(mc[max_pos].x, mc[max_pos].y);
+            calculateDirection2(pos);
         }
-        msleep(1);
+//            circle(frame, mc[max_pos], 10, Scalar(0,255,0)); //在重心坐标画圆
+    }
+    else
+    {
+        curPosition = Unknown;
+        msg.append("Unrecognized color\r\n");
+    }
+
+    if (moveMode == Wait)
+    {
+        msg.append(QString("Reach.Target=%1\r\n").arg(m_hsvTargetList[m_hsvTargetNum].name));
+    }
+    msg.append("@End\r\n");
+    emit sendInfo(msg);  //发送结果给客户端
+
+    if (type == 1)
+    {
+        if (moveMode == Track)
+        {
+            trackingTarget();
+        }
+        else if (moveMode == Access)
+        {
+            accessTarget();
+        }
+        else if (moveMode == Obstacle)
+        {
+            obstacleAvoidance();
+        }
     }
 }
 
@@ -298,12 +521,14 @@ bool DiscernColor::getCurrentMark(const vector<Object *> &objList)
     }
 
     int rectX,rectY,rectW,rectH;
+    int curIndex;
     if (objList.size() == 1) //当只有一个标记框
     {
         rectX = objList[0]->minX;
         rectY = objList[0]->minY;
         rectW = objList[0]->maxX - rectX;
         rectH = objList[0]->maxY - rectY;
+        curIndex = 0;
     }
     else //当存在多个标记框
     {
@@ -321,6 +546,7 @@ bool DiscernColor::getCurrentMark(const vector<Object *> &objList)
         rectY = objList[areaVec.size()-1]->minY;
         rectW = objList[areaVec.size()-1]->maxX - rectX;
         rectH = objList[areaVec.size()-1]->maxY - rectY;
+        curIndex = areaVec.size()-1;
     }
 
 //    //排除过大和过小的标记框
@@ -338,6 +564,8 @@ bool DiscernColor::getCurrentMark(const vector<Object *> &objList)
     currentMark.setY(rectY);
     currentMark.setWidth(rectW);
     currentMark.setHeight(rectH);
+    currentCenterPoint.setX(objList[curIndex]->centerX);
+    currentCenterPoint.setY(objList[curIndex]->centerY);
 
     return true;
 }
@@ -350,51 +578,84 @@ bool DiscernColor::getCurrentMark(const vector<Object *> &objList)
 
 void DiscernColor::calculateDirection()
 {
-    if ( (currentMark.x()+currentMark.width()) <= (g_frame_width*g_horizontal_ratio) )
+//    if ( (currentMark.x()+currentMark.width()) <= (g_frame_width*g_horizontal_ratio) )
+//    {
+//        curPosition = Left;
+//    }
+//    else if ( (currentMark.x()+currentMark.width() - g_frame_width*g_horizontal_ratio) <= (currentMark.width()*g_object_ratio) )
+//    {
+//        curPosition = Left;
+//    }
+
+//    else if (currentMark.x() >= g_frame_width*(1.0-g_horizontal_ratio))
+//    {
+//        curPosition = Right;
+//    }
+//    else if ( (currentMark.x() < g_frame_width*(1.0-g_horizontal_ratio)) &&
+//             ((currentMark.x()+currentMark.width() - g_frame_width*(1.0-g_horizontal_ratio)) >= (currentMark.width()*g_object_ratio)) )
+//    {
+//        curPosition = Right;
+//    }
+//    else
+//    {
+//        curPosition = Center;
+//    }
+
+//    if (curPosition == Left)
+//    {
+//        if (currentMark.x() <= qRound(g_frame_width*g_horizontal_ratio*g_rotation_range))
+//        {
+//            m_left_command = g_left_l_command;
+//        }
+//        else
+//        {
+//            m_left_command = g_left_s_command;
+//        }
+//    }
+
+//    if (curPosition == Right)
+//    {
+//        if (currentMark.x() <= (qRound(g_frame_width*(1-g_horizontal_ratio)) + qRound(g_frame_width*g_horizontal_ratio*(1-g_rotation_range))))
+//        {
+//            m_right_command = g_right_s_command;
+//        }
+//        else
+//        {
+//            m_right_command = g_right_l_command;
+//        }
+//    }
+}
+
+/**
+ * @brief     通过标记框的重心位置或者重心判断物体方向
+ * @param     pos 中心点或重心坐标
+ */
+
+void DiscernColor::calculateDirection2(const QPoint &pos)
+{
+    if ( pos.x() < qRound(g_frame_width*g_horizontal_ratio*g_rotation_range) )
     {
-        curPosition = Left;
-    }
-    else if ( (currentMark.x()+currentMark.width() - g_frame_width*g_horizontal_ratio) <= (currentMark.width()*g_object_ratio) )
-    {
-        curPosition = Left;
+        curPosition = LeftFar;
     }
 
-    else if (currentMark.x() >= g_frame_width*(1.0-g_horizontal_ratio))
+    else if ( pos.x() >= qRound(g_frame_width*g_horizontal_ratio*g_rotation_range)  &&
+              pos.x() <  g_frame_width*g_horizontal_ratio )
     {
-        curPosition = Right;
+        curPosition = LeftNear;
     }
-    else if ( (currentMark.x() < g_frame_width*(1.0-g_horizontal_ratio)) &&
-             ((currentMark.x()+currentMark.width() - g_frame_width*(1.0-g_horizontal_ratio)) >= (currentMark.width()*g_object_ratio)) )
+
+    else if ( pos.x() > g_frame_width*(1.0-g_horizontal_ratio) &&
+              pos.x() <=  (g_frame_width - qRound(g_frame_width*g_horizontal_ratio*g_rotation_range)) )
     {
-        curPosition = Right;
+        curPosition = RightNear;
+    }
+    else if (pos.x() > (g_frame_width - qRound(g_frame_width*g_horizontal_ratio*g_rotation_range)) )
+    {
+        curPosition = RightFar;
     }
     else
     {
         curPosition = Center;
-    }
-
-    if (curPosition == Left)
-    {
-        if (currentMark.x() <= qRound(g_frame_width*g_horizontal_ratio*g_rotation_range))
-        {
-            m_left_command = g_left_l_command;
-        }
-        else
-        {
-            m_left_command = g_left_s_command;
-        }
-    }
-
-    if (curPosition == Right)
-    {
-        if (currentMark.x() <= (qRound(g_frame_width*(1-g_horizontal_ratio)) + qRound(g_frame_width*g_horizontal_ratio*(1-g_rotation_range))))
-        {
-            m_right_command = g_right_s_command;
-        }
-        else
-        {
-            m_right_command = g_right_l_command;
-        }
     }
 }
 
@@ -405,26 +666,52 @@ void DiscernColor::calculateDirection()
 
 void DiscernColor::compareTargetWidth(int index)
 {
-    int originalWidth = m_targetList[index].maxWidth;
-    int currentWidth = currentMark.width();
-    if (currentWidth > (int)(originalWidth*g_arrive_ratio))
+    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
     {
-        if (m_targetList[index].type == 0)
+        if (currentMark.width() > (int)(m_targetList[index].maxWidth*g_arrive_ratio))
         {
-            moveMode = Obstacle;
+            if (m_targetList[index].type == 0)
+            {
+                moveMode = Obstacle;
+            }
+            else
+            {
+                moveMode = Wait;
+                m_targetList[index].state = 1;
+            }
+        }
+        else if (currentMark.width() > (int)(m_targetList[index].maxWidth*g_access_ratio))
+        {
+            moveMode = Access;
         }
         else
         {
-            moveMode = Wait;
+            moveMode = Track;
         }
     }
-    else if (currentWidth > (int)(originalWidth*g_access_ratio))
+
+    else if (G_Image_Format == "HSV")
     {
-        moveMode = Access;
-    }
-    else
-    {
-        moveMode = Track;
+        if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[index].maxWidth*g_arrive_ratio))
+        {
+            if (m_hsvTargetList[index].type == 0)
+            {
+                moveMode = Obstacle;
+            }
+            else
+            {
+                moveMode = Wait;
+                m_hsvTargetList[index].state = 1;
+            }
+        }
+        else if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[index].maxWidth*g_access_ratio))
+        {
+            moveMode = Access;
+        }
+        else
+        {
+            moveMode = Track;
+        }
     }
 }
 
@@ -435,13 +722,27 @@ void DiscernColor::compareTargetWidth(int index)
 
 int DiscernColor::currentTarget() const
 {
-    for (int i=0; i<m_targetList.size(); ++i)
+    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
     {
-        if (m_targetList[i].state == 0)
+        for (int i=0; i<m_targetList.size(); ++i)
         {
-            return i;
+            if (m_targetList[i].state == 0)
+            {
+                return i;
+            }
         }
     }
+    else if (G_Image_Format == "HSV")
+    {
+        for (int i=0; i<m_hsvTargetList.size(); ++i)
+        {
+            if (m_hsvTargetList[i].state == 0)
+            {
+                return i;
+            }
+        }
+    }
+
     return -1;
 }
 
@@ -459,12 +760,20 @@ void DiscernColor::findTarget()
         emit startMoveOn(m_nMoveOnTimeCount);
         m_findCount = 0;
         break;
-    case Left:  //左转
-        emit directionChanged(m_left_command);
+    case LeftFar:  //左转(大)
+        emit directionChanged(g_left_l_command);
         m_findCount = 0;
         break;
-    case Right: //右转
-        emit directionChanged(m_right_command);
+    case LeftNear: //左转(小)
+        emit directionChanged(g_left_s_command);
+        m_findCount = 0;
+        break;
+    case RightNear: //右转(小)
+        emit directionChanged(g_right_s_command);
+        m_findCount = 0;
+        break;
+    case RightFar:  //右转(大)
+        emit directionChanged(g_right_l_command);
         m_findCount = 0;
         break;
     case Unknown: //没有识别到颜色,先右转，如果向右转动3次还是找不到就持续左转
@@ -509,13 +818,22 @@ void DiscernColor::accessTarget()
 
 void DiscernColor::obstacleAvoidance()
 {
-    qDebug()<< "----======start obstacle avoidance !";
+    int turn;
+    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    {
+        turn = m_targetList[targetNumber].turn;
+    }
+    else if (G_Image_Format == "HSV")
+    {
+        turn = m_hsvTargetList[m_hsvTargetNum].turn;
+    }
+
     actionStatus = Doing;
     isReady = false;
     obstacleCount++;
+    qDebug()<< "----======start obstacle avoidance: " << obstacleCount;
     if (obstacleCount == 1 || obstacleCount == 2) //避障执行的前两次动作，转向
     {
-        int turn = m_targetList[targetNumber].turn;
         if(turn == 0) //左边
         {
             emit directionChanged(g_left_l_command);
@@ -531,7 +849,6 @@ void DiscernColor::obstacleAvoidance()
     }
     else if (obstacleCount == 4 || obstacleCount == 5) //恢复转向
     {
-        int turn = m_targetList[targetNumber].turn;
         if(turn == 0)
         {
             emit directionChanged(g_right_l_command);
@@ -543,6 +860,14 @@ void DiscernColor::obstacleAvoidance()
 
         obstacleCount = 0;
         moveMode = Track;
+        if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+        {
+            m_targetList[targetNumber].state = 1;
+        }
+        else if (G_Image_Format == "HSV")
+        {
+            m_hsvTargetList[m_hsvTargetNum].state = 1;
+        }
     }
 }
 

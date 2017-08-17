@@ -11,33 +11,6 @@
 
 #include "server.h"
 
-/*************************************************************
- * 定义全局变量,这些变量在global.var.h文件中声明
- *************************************************************/
-
-QString g_serial_name = "/dev/ttyS1";
-int g_baud_rate = 9600;
-int g_listen_port = 7980;
-int g_broadcast_port = 5713;
-int g_frame_width = 640;
-int g_frame_height = 480;
-int g_frame_quality = 50;
-double g_horizontal_ratio = 0.4;
-double g_object_ratio = 0.6;
-double g_rotation_range = 0.25;
-int g_time_count = 1500;
-int g_forward_command = 1;
-int g_left_s_command = 3;
-int g_right_s_command = 4;
-int g_left_l_command = 5;
-int g_right_l_command = 6;
-int g_ping_router_count = 8;
-QString g_robot_number = "AELOS150C00D";
-int g_far_move_on_time = 3500;
-int g_near_move_on_time = 1500;
-double g_arrive_ratio = 0.9;
-double g_access_ratio = 0.4;
-
 /**
  * @brief     Server类的构造函数
  * @details   初始化
@@ -51,8 +24,6 @@ Server::Server()
     m_pingCount = 0;
     m_bIsConnectRounter = false;
     m_bIsReady = true;
-
-    readConfigFile();
 
     QNetworkProxyFactory::setUseSystemConfiguration(false);
     tcpServer = new QTcpServer(this);
@@ -272,21 +243,12 @@ bool Server::parseData(const QString &msg)
     else if (msg.startsWith("Add Target="))
     {
         QStringList msgList = msg.mid(msg.indexOf("=")+1).split(",");
-        if (msgList.size() == 4)
-        {
-            QString name = msgList[0];
-            int width = msgList[1].toInt();
-            int type = msgList[2].toInt();
-            int turn = msgList[3].toInt();
-            discernColor->addTarget(name, width, type, turn);
-            return true;
-        }
+        return discernColor->addTarget(msgList);
     }
     else if(msg.startsWith("Remove Target="))
     {
         int index = msg.mid(msg.indexOf("=")+1).toInt();
-        discernColor->removeTarget(index);
-        return true;
+        return discernColor->removeTarget(index);
     }
     else if(msg.startsWith("set Robot.Action="))
     {
@@ -344,10 +306,28 @@ bool Server::parseData(const QString &msg)
     }
     else if (msg.startsWith("set Image.Format="))
     {
-        QString image_format = msg.mid(msg.indexOf("=")+1);
-        if (image_format == "RGB" || image_format == "YUV")
+        QString image_format = msg.mid(msg.indexOf("=")+1,3);
+        if (image_format == "RGB" || image_format == "YUV" || image_format == "HSV")
         {
-            videoControl->setImageFormat(image_format);
+            G_Image_Format = image_format;
+            if (image_format == "HSV")
+            {
+                QString strVal = msg.mid(msg.indexOf("=")+5);
+                QStringList valList = strVal.split(",");
+                if (valList.length() == 6)
+                {
+                    videoControl->setHsvInRange("MinH", valList[0].toInt());
+                    videoControl->setHsvInRange("MinS", valList[1].toInt());
+                    videoControl->setHsvInRange("MinV", valList[2].toInt());
+                    videoControl->setHsvInRange("MaxH", valList[3].toInt());
+                    videoControl->setHsvInRange("MaxS", valList[4].toInt());
+                    videoControl->setHsvInRange("MaxV", valList[5].toInt());
+                }
+                else
+                {
+                    return false;
+                }
+            }
             return true;
         }
     }
@@ -382,6 +362,13 @@ bool Server::parseData(const QString &msg)
             return true;
         }
     }
+    else if (msg.startsWith("set HSV.Channel."))
+    {
+        QString type = msg.mid(msg.indexOf("=")-4, 4);
+        int val = msg.mid(msg.indexOf("=")+1).toInt();
+        videoControl->setHsvInRange(type, val);
+        return true;
+    }
     else if (msg.startsWith("set Target.Type="))
     {
         QStringList msgList = msg.mid(msg.indexOf("=")+1).split(",");
@@ -389,8 +376,7 @@ bool Server::parseData(const QString &msg)
         {
             int index = msgList[0].toInt();
             int type = msgList[1].toInt();
-            discernColor->setTargetType(index, type);
-            return true;
+            return discernColor->setTargetType(index, type);
         }
     }
     else if (msg.startsWith("set Target.Turn="))
@@ -400,8 +386,7 @@ bool Server::parseData(const QString &msg)
         {
             int index = msgList[0].toInt();
             int turn = msgList[1].toInt();
-            discernColor->setTargetTurn(index, turn);
-            return true;
+            return discernColor->setTargetTurn(index, turn);
         }
     }
     else if (msg == "get Current.Electricity")
@@ -459,6 +444,11 @@ bool Server::parseData(const QString &msg)
                 }
             }
         }
+        return true;
+    }
+    else if (msg.contains("Start Add HSV.Target"))
+    {
+        discernColor->startAddHsvTarget();
         return true;
     }
 
@@ -564,10 +554,10 @@ void Server::modifyNetworkFile(const QString &id, const QString &password)
     file.write(newData.toUtf8());
     file.close();
 
-    playAudio(ResartToWifiMode);
-
     QSettings iniReader("network/wifi.ini",QSettings::IniFormat);
     iniReader.setValue("Configure/mode",0);
+
+    playAudio(ResartToWifiMode);
 
     qDebug()<<"--===start reset network===---";
     m_shellName = "network/wifi/wifi_setup.sh";
@@ -657,7 +647,7 @@ void Server::WriteSerial(int val)
         qDebug("start action: move,%d",val);
         char* buf = (char*)(&serialnum);
         serialPort->sendMsg(buf,bufferSize);
-//        QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
+        QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
     }
 }
 
@@ -682,7 +672,7 @@ void Server::WriteSerial2(const QString &val)
     }
     char* buf = (char*)(&serialnum);
     serialPort->sendMsg(buf,1);
-//     QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
+    QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
 }
 
 
@@ -846,57 +836,4 @@ QString Server::getLocalIP4Address() const
         }
     }
     return QString();
-}
-
-/**
- * @brief     读取配置文件
- */
-
-void Server::readConfigFile()
-{
-    QSettings iniReader("setup.ini",QSettings::IniFormat);
-    g_serial_name = iniReader.value("Serial/name").toString();
-    g_baud_rate = iniReader.value("Serial/baudRate").toInt();
-    g_frame_width = iniReader.value("Resolution/width").toInt();
-    g_frame_height = iniReader.value("Resolution/height").toInt();
-    g_listen_port = iniReader.value("Port/tcpPort").toInt();
-    g_broadcast_port = iniReader.value("Port/udpPort").toInt();
-    g_frame_quality = iniReader.value("Debug/frameQuality").toInt();
-    g_horizontal_ratio = iniReader.value("Debug/horizontalRatio").toDouble();
-    g_object_ratio = iniReader.value("Debug/objectRatio").toDouble();
-    g_rotation_range = iniReader.value("Debug/rotationRange").toDouble();
-    g_time_count = iniReader.value("Debug/timeCount").toInt();
-    g_forward_command = iniReader.value("Debug/forwardCommand").toInt();
-    g_left_s_command = iniReader.value("Debug/sLeftCommand").toInt();
-    g_right_s_command = iniReader.value("Debug/sRightCommand").toInt();
-    g_left_l_command = iniReader.value("Debug/lLeftCommand").toInt();
-    g_right_l_command = iniReader.value("Debug/lRightCommand").toInt();
-    g_ping_router_count = iniReader.value("Debug/pingRouterCount").toInt();
-    g_robot_number = iniReader.value("Robot/No").toString();
-    g_far_move_on_time = iniReader.value("Debug/moveOnFarTime").toInt();
-    g_near_move_on_time = iniReader.value("Debug/moveOnNearTime").toInt();
-    g_arrive_ratio = iniReader.value("Debug/arriveRatio").toDouble();
-    g_access_ratio = iniReader.value("Debug/accessRatio").toDouble();
-
-    qDebug()<< "serialName: "<< g_serial_name << "\n"
-            << "baudRate: " << g_baud_rate << "\n"
-            << QString("resolution: %1x%2").arg(g_frame_width).arg(g_frame_height) << "\n"
-            << "g_listen_port: " << g_listen_port << "\n"
-            << "g_broadcast_port: " << g_broadcast_port << "\n"
-            << "g_frame_quality: " << g_frame_quality << "\n"
-            << "g_horizontal_ratio: " << g_horizontal_ratio << "\n"
-            << "g_object_ratio: " << g_object_ratio << "\n"
-            << "g_rotation_range: " << g_rotation_range << "\n"
-            << "g_time_count: " << g_time_count << "\n"
-            << "g_forward_command: " << g_forward_command << "\n"
-            << "g_left_s_command: " << g_left_s_command << "\n"
-            << "g_right_s_command: " << g_right_s_command << "\n"
-            << "g_left_l_command: " << g_left_l_command << "\n"
-            << "g_right_l_command: " << g_right_l_command << "\n"
-            << "g_ping_router_count: " << g_ping_router_count << "\n"
-            << "g_robot_number: " << g_robot_number << "\n"
-            << "g_far_move_on_time: " << g_far_move_on_time << "\n"
-            << "g_near_move_on_time: " << g_near_move_on_time << "\n"
-            << "g_arrive_ratio: " << g_arrive_ratio << "\n"
-            << "g_access_ratio: " << g_access_ratio << "\n";
 }
