@@ -27,7 +27,7 @@ public:
     ~ScanIpThread();
 
     void setPort(int port);
-    void setScanRange(int third, int min, int max);
+    void setScanRange(const QString &prefix, int min, int max);
     void startScan();
     void stop();
 

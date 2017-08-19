@@ -24,6 +24,8 @@ Server::Server()
     m_pingCount = 0;
     m_bIsConnectRounter = false;
     m_bIsReady = true;
+    m_bufferReadSize = 0;
+    m_bufferTotalSize = 0;
 
     QNetworkProxyFactory::setUseSystemConfiguration(false);
     tcpServer = new QTcpServer(this);
@@ -38,7 +40,7 @@ Server::Server()
     connect(serialPort, SIGNAL(actionFinished()), this, SLOT(onActionFinished()));
     connect(serialPort, SIGNAL(lowBattery()), this, SLOT(onLowBattery()));
     connect(videoControl,SIGNAL(sendInfo(QString)), this, SLOT(onSendInfo(QString)));
-    connect(videoControl, SIGNAL(sendFrame(QImage*)), discernColor, SLOT(readFrame(QImage*)));
+    connect(videoControl, SIGNAL(sendFrame(QImage&)), discernColor, SLOT(readFrame(QImage&)));
     connect(discernColor,SIGNAL(sendInfo(QString)), this, SLOT(onSendInfo(QString)));
     connect(discernColor,SIGNAL(directionChanged(int)),this,SLOT(onDirectionChanged(int)));
     connect(discernColor, SIGNAL(startMoveOn(int)), this, SLOT(onStartMoveOn(int)));
@@ -160,9 +162,11 @@ void Server::onNewConnection()
         QString msg = QString("%1 is connecting to the server\r\n").arg(m_client_ip);
         QByteArray outBlock;
         QDataStream out(&outBlock,QIODevice::WriteOnly);
-        out.setVersion(QDataStream::Qt_5_3);
-        out<<msg.toUtf8();
+        out << qint32(0);
+        out.device()->seek(0);
+        out << outBlock.size() + msg.size() << msg;
         tempSocket->write(outBlock);
+        tempSocket->waitForBytesWritten();
     }
 }
 
@@ -173,45 +177,60 @@ void Server::onNewConnection()
 
 void Server::onSocketRead()
 {
-    QByteArray receiveByteArray;
     QDataStream in(tcpSocket);
-    in.setVersion(QDataStream::Qt_5_3);
-    in >> receiveByteArray;
-    QString receive_data = QString::fromUtf8(receiveByteArray);
-    qDebug()<< "receive: "<< receive_data;
-    if (receive_data == "95f41ce1")  //身份验证
+//    in.setVersion(QDataStream::Qt_5_3);
+    if (m_bufferReadSize == 0)
     {
-        WriteMsg(QString("676f7a75").toUtf8());
-    }
-    else if (receive_data.startsWith("Start.Running"))  //确认完毕
-    {
-        QString retMsg("From server: \r\n");
-        retMsg.append(QString("Camera.Resolution=%1x%2\r\n").arg(g_frame_width).arg(g_frame_height));
-        retMsg.append(QString("Area.Position=%1,%2\r\n").arg(g_horizontal_ratio).arg(g_rotation_range));
-        retMsg.append(QString("Image.Quality=%1\r\n").arg(g_frame_quality));
-        retMsg.append(QString("Arrive.Ratio=%1\r\n").arg(g_arrive_ratio));
-        retMsg.append(QString("Access.Ratio=%1\r\n").arg(g_access_ratio));
-        retMsg.append(QString("Delay.Count=%1\r\n").arg(g_time_count));
-        retMsg.append(QString("Quick.Count=%1\r\n").arg(g_far_move_on_time));
-        retMsg.append(QString("Slow.Count=%1\r\n").arg(g_near_move_on_time));
-        retMsg.append(QString("Open %1 %2 !\r\n").arg(g_serial_name).arg(isOPenSerial ? "successfully" : "failed"));
-        retMsg.append("End\r\n");
-        WriteMsg(retMsg.toUtf8()); //连接成功，返回信息
+        if (tcpSocket->bytesAvailable() <= sizeof(qint32))
+            return;
 
-        videoControl->openUrl(tcpSocket->peerAddress().toString()); //开启线程，读取摄像头
-    }
-    else
-    {
-        if (parseData(receive_data))
+        in >> m_bufferTotalSize;
+        m_bufferReadSize += sizeof(qint32);
+
+        QByteArray receiveByteArray;
+        in >> receiveByteArray;
+        m_bufferReadSize += receiveByteArray.size();
+        if (m_bufferReadSize == m_bufferTotalSize)
         {
-            m_result_msg = QString("send ok (\"%1\")\r\n").arg(m_result_msg);
+            QString receive_data = QString::fromUtf8(receiveByteArray);
+            qDebug()<< "receive: "<< receive_data;
+            if (receive_data == "95f41ce1")  //身份验证
+            {
+                WriteMsg(QString("676f7a75").toUtf8());
+            }
+            else if (receive_data.startsWith("Start.Running"))  //确认完毕
+            {
+                QString retMsg("From server: \r\n");
+                retMsg.append(QString("Camera.Resolution=%1x%2\r\n").arg(g_frame_width).arg(g_frame_height));
+                retMsg.append(QString("Area.Position=%1,%2\r\n").arg(g_horizontal_ratio).arg(g_rotation_range));
+                retMsg.append(QString("Image.Quality=%1\r\n").arg(g_frame_quality));
+                retMsg.append(QString("Arrive.Ratio=%1\r\n").arg(g_arrive_ratio));
+                retMsg.append(QString("Access.Ratio=%1\r\n").arg(g_access_ratio));
+                retMsg.append(QString("Delay.Count=%1\r\n").arg(g_time_count));
+                retMsg.append(QString("Quick.Count=%1\r\n").arg(g_far_move_on_time));
+                retMsg.append(QString("Slow.Count=%1\r\n").arg(g_near_move_on_time));
+                retMsg.append(QString("Open %1 %2 !\r\n").arg(g_serial_name).arg(isOPenSerial ? "successfully" : "failed"));
+                retMsg.append("End\r\n");
+                WriteMsg(retMsg.toUtf8()); //连接成功，返回信息
+
+                videoControl->openUrl(tcpSocket->peerAddress().toString()); //开启线程，读取摄像头
+            }
+            else
+            {
+                if (parseData(receive_data))
+                {
+                    m_result_msg = QString("send ok (\"%1\")\r\n").arg(m_result_msg);
+                }
+                else
+                {
+                    m_result_msg = QString("send error (\"%1\")\r\n").arg(m_result_msg);
+                }
+                //接收成功，返回结果
+                WriteMsg(m_result_msg.toUtf8());
+            }
         }
-        else
-        {
-            m_result_msg = QString("send error (\"%1\")\r\n").arg(m_result_msg);
-        }
-        //接收成功，返回结果
-        WriteMsg(m_result_msg.toUtf8());
+        m_bufferReadSize = 0;
+        m_bufferTotalSize = 0;
     }
 }
 
@@ -226,7 +245,16 @@ bool Server::parseData(const QString &msg)
         return false;
 
     m_result_msg = msg;
-    if (msg.startsWith("set Select.Rect="))
+    if (msg.startsWith("set Image.Display"))
+    {
+        QString strVal = msg.mid(msg.indexOf("=")+1);
+        if (strVal == "Original" || strVal == "Transform")
+        {
+            G_Image_Display = strVal;
+            return true;
+        }
+    }
+    else if (msg.startsWith("set Select.Rect="))
     {
         QStringList posList = msg.mid(msg.indexOf("=")+1).split(",");
         if (posList.size() == 4)
@@ -307,7 +335,7 @@ bool Server::parseData(const QString &msg)
     else if (msg.startsWith("set Image.Format="))
     {
         QString image_format = msg.mid(msg.indexOf("=")+1,3);
-        if (image_format == "RGB" || image_format == "YUV" || image_format == "HSV")
+        if (image_format == "YUV" || image_format == "HSV")
         {
             G_Image_Format = image_format;
             if (image_format == "HSV")
@@ -451,6 +479,15 @@ bool Server::parseData(const QString &msg)
         discernColor->startAddHsvTarget();
         return true;
     }
+    else if (msg.startsWith("set Object.Type"))
+    {
+        QString objType = msg.mid(msg.indexOf("=")+1);
+        if (objType == "Null" || objType == "football")
+        {
+            G_Object_Type = objType;
+            return true;
+        }
+    }
 
     return false;
 }
@@ -464,9 +501,11 @@ void Server::WriteMsg(const QByteArray &msg)
 {
     QByteArray outBlock;
     QDataStream out(&outBlock,QIODevice::WriteOnly);
-    out.setVersion(QDataStream::Qt_5_3);
-    out<<msg;
+    out << qint32(0);
+    out.device()->seek(0);
+    out << outBlock.size() + msg.size() << msg;
     tcpSocket->write(outBlock);
+    tcpSocket->waitForBytesWritten();
 }
 
 /**
@@ -647,7 +686,9 @@ void Server::WriteSerial(int val)
         qDebug("start action: move,%d",val);
         char* buf = (char*)(&serialnum);
         serialPort->sendMsg(buf,bufferSize);
+#ifdef Q_OS_WIN
         QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
+#endif
     }
 }
 
@@ -672,7 +713,9 @@ void Server::WriteSerial2(const QString &val)
     }
     char* buf = (char*)(&serialnum);
     serialPort->sendMsg(buf,1);
+#ifdef Q_OS_WIN
     QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
+#endif
 }
 
 

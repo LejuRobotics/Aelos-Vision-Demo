@@ -21,6 +21,8 @@ extern int g_color_channel_Y; /** < YUV格式的Y通道 */
 extern Scalar g_hsv_lower;
 extern Scalar g_hsv_upper;
 
+const int g_nStructElementSize = 9;  /**< 结构元素(内核矩阵)的尺寸*/
+
 /**
  * @class     DiscernColor
  * @brief     识别颜色位置，控制机器人动作
@@ -100,8 +102,8 @@ public:
         int type;               /**< 目标类型，0障碍物，1目标 */
         int maxWidth;           /**< 在停止靠近目标的位置识别到的标记框宽度 */
         int turn;               /**< 避障转动方向，0左边，1右边 */
-        Scalar hsvLower;
-        Scalar hsvUpper;
+        Scalar hsvLower;        /**< hsv识别颜色inrange函数中的颜色范围下界 */
+        Scalar hsvUpper;        /**< hsv识别颜色inrange函数中的颜色范围上界 */
         int state;              /**< 状态，0未完成，1已完成 */
     };
 
@@ -119,7 +121,7 @@ public:
     void startAddHsvTarget();
 
 public slots:
-    void readFrame(QImage *image);
+    void readFrame(QImage &image);
 
 protected:
     virtual void run();
@@ -184,6 +186,7 @@ private:
 
     QList<Target> m_targetList;        /**< 记录目标的容器 */
 
+    bool m_bIsHsvSelected;
     Mat hsv_mat;
     bool m_bAddHsvFlag;
     Rect m_hsvCurrentMark;

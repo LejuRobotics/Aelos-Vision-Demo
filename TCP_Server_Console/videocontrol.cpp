@@ -21,6 +21,7 @@ VideoControl::VideoControl(QObject *parent) : QThread(parent)
     isSendFrame = true;
     alpha = 1.0;
     beta = 0;
+    qRegisterMetaType<QImage>("QImage&");
 }
 
 /**
@@ -207,8 +208,8 @@ void VideoControl::run()
 
         //[2] 发送图片给其它线程进行识别颜色
         cvtColor(frame,rgb_mat,CV_BGR2RGB);
-        rgbImg = new QImage((uchar*) rgb_mat.data, rgb_mat.cols, rgb_mat.rows,
-                            rgb_mat.cols*rgb_mat.channels(), QImage::Format_RGB888);
+        rgbImg = QImage((uchar*) rgb_mat.data, rgb_mat.cols, rgb_mat.rows,
+                        rgb_mat.cols*rgb_mat.channels(), QImage::Format_RGB888);
         emit sendFrame(rgbImg);
         //[2]
 
@@ -218,74 +219,130 @@ void VideoControl::run()
             QBuffer buf(&byte);
             buf.open(QIODevice::WriteOnly);
 
-            if (G_Image_Format == "RGB")
+            if (G_Object_Type != "Null")
             {
-                rgbImg->save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
-            }
-            else if (G_Image_Format == "YUV")
-            {
-                cv::cvtColor(frame, yuv_mat,CV_BGR2YUV);
-                for(int i = 0; i < g_frame_height; i++)
+                if (G_Object_Type == "football")
                 {
-                    Vec3b *p = yuv_mat.ptr<Vec3b>(i);  //通过指针遍历每一个像素点
-                    for(int j = 0; j < g_frame_width; j++)
+                    //转为灰度图，进行图像平滑
+                    Mat football_mat;
+                    cvtColor(frame, football_mat, CV_BGR2GRAY);//转化边缘检测后的图为灰度图
+                    GaussianBlur(football_mat, football_mat, Size(9, 9), 2, 2); //高斯模糊算法
+
+                    //进行霍夫圆变换
+                    vector<Vec3f> circles;//保存矢量
+//                    HoughCircles(football_mat, circles, CV_HOUGH_GRADIENT, 1, 10, 100, 60, 0, 0);
+                    HoughCircles(football_mat, circles, CV_HOUGH_GRADIENT, 2, football_mat.rows/4, 200, 100, 0, 0);
+
+                    if (G_Image_Display == "Original")
                     {
-    //                    yuv_mat.at<cv::Vec3b>(i,j)[0] = 128;
-                        p[j][0] = g_color_channel_Y;
+                        rgb_mat.copyTo(football_mat);
+                    }
+                    else if (G_Image_Display == "Transform")
+                    {
+                        cvtColor(football_mat, football_mat, CV_GRAY2RGB);
+                    }
+
+                    //依次在图中绘制出圆
+                    for (size_t i = 0; i < circles.size(); i++)
+                    {
+                        Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+                        int radius = cvRound(circles[i][2]);
+                        //绘制圆心
+                        circle(football_mat, center, 3, Scalar(0, 255, 0), -1, 8, 0);
+                        //绘制圆轮廓
+                        circle(football_mat, center, radius, Scalar(155, 50, 255), 3, 8, 0);
+                    }
+                    m_displayImage = QImage((uchar*) football_mat.data, football_mat.cols, football_mat.rows,
+                                        football_mat.cols*football_mat.channels(), QImage::Format_RGB888);
+                    m_displayImage.save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
+                }
+            }
+            else
+            {
+                if (G_Image_Format == "YUV")
+                {
+                    if (G_Image_Display == "Original")
+                    {
+                        rgbImg.save(&buf,"JPEG",g_frame_quality);
+                    }
+                    else if (G_Image_Display == "Transform")
+                    {
+                        Mat yuv_mat;
+                        cv::cvtColor(frame, yuv_mat,CV_BGR2YUV);
+                        for(int i = 0; i < g_frame_height; i++)
+                        {
+                            Vec3b *p = yuv_mat.ptr<Vec3b>(i);  //通过指针遍历每一个像素点
+                            for(int j = 0; j < g_frame_width; j++)
+                            {
+                                //                    yuv_mat.at<cv::Vec3b>(i,j)[0] = 128;
+                                p[j][0] = g_color_channel_Y;
+                            }
+                        }
+                        m_displayImage = QImage((uchar*) yuv_mat.data, yuv_mat.cols, yuv_mat.rows,
+                                                yuv_mat.cols*yuv_mat.channels(), QImage::Format_RGB888);
+                        m_displayImage.save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
                     }
                 }
-                yuvImg = new QImage((uchar*) yuv_mat.data, yuv_mat.cols, yuv_mat.rows,
-                                    yuv_mat.cols*yuv_mat.channels(), QImage::Format_RGB888);
-                yuvImg->save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
-            }
-            else if (G_Image_Format == "HSV")
-            {
-                //转到HSV空间
-                cvtColor(frame,hsv_mat,COLOR_BGR2HSV);
-
-                //根据阈值构建掩膜
-                inRange(hsv_mat, g_hsv_lower, g_hsv_upper, hsv_mat);
-
-                int g_nStructElementSize = 9; //结构元素(内核矩阵)的尺寸
-                cv::Mat str_el = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(g_nStructElementSize, g_nStructElementSize));
-
-                //腐蚀操作
-                erode(hsv_mat, hsv_mat, str_el);
-                //膨胀操作，其实先腐蚀再膨胀的效果是开运算，去除噪点
-                dilate(hsv_mat, hsv_mat, str_el);
-
-                //轮廓检测
-                vector<vector<Point> > contours;
-                findContours(hsv_mat, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-
-                vector<Moments>mu(contours.size());
-                vector<Point2f>mc(contours.size());
-                vector<double> areaVec;
-                for (size_t i=0; i<contours.size(); ++i)
+                else if (G_Image_Format == "HSV")
                 {
-                    //计算轮廓的面积
-                    double tmparea = fabs(contourArea(contours[i]));
-                    areaVec.push_back(tmparea);
+                    //转到HSV空间
+                    Mat hsv_mat;
+                    cvtColor(frame,hsv_mat,COLOR_BGR2HSV);
 
-                    mu[i] = moments(contours[i], false);
-                    mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+                    //根据阈值构建掩膜
+                    inRange(hsv_mat, g_hsv_lower, g_hsv_upper, hsv_mat);
+
+                    cv::Mat str_el = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(g_nStructElementSize, g_nStructElementSize));
+
+                    //腐蚀操作
+                    erode(hsv_mat, hsv_mat, str_el);
+                    //膨胀操作，其实先腐蚀再膨胀的效果是开运算，去除噪点
+                    dilate(hsv_mat, hsv_mat, str_el);
+
+                    //轮廓检测
+                    vector<vector<Point> > contours;
+                    findContours(hsv_mat, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+                    vector<Moments>mu(contours.size());
+                    vector<Point2f>mc(contours.size());
+                    vector<double> areaVec;
+                    for (size_t i=0; i<contours.size(); ++i)
+                    {
+                        //计算轮廓的面积
+                        double tmparea = fabs(contourArea(contours[i]));
+                        areaVec.push_back(tmparea);
+
+                        mu[i] = moments(contours[i], false);
+                        mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+                    }
+
+                    //选择最大面积的轮廓
+                    int max_pos = (int)(max_element(areaVec.begin(), areaVec.end()) - areaVec.begin());
+                    if (max_pos < (int)contours.size())
+                    {
+                        Rect findRect = boundingRect(contours[max_pos]);
+                        if (G_Image_Display == "Original")
+                        {
+                            rectangle(rgb_mat, findRect, Scalar(0,255,0),2);
+                            circle(rgb_mat, mc[max_pos], 6, Scalar(0,0,255)); //在重心坐标画圆
+                            m_displayImage = QImage((uchar*) rgb_mat.data, rgb_mat.cols, rgb_mat.rows,
+                                                rgb_mat.cols*rgb_mat.channels(), QImage::Format_RGB888);
+                        }
+                        else if (G_Image_Display == "Transform")
+                        {
+                            cvtColor(hsv_mat, hsv_mat, CV_GRAY2RGB);
+                            rectangle(hsv_mat, findRect, Scalar(0,255,0),2);
+                            circle(hsv_mat, mc[max_pos], 6, Scalar(0,0,255)); //在重心坐标画圆
+                            m_displayImage = QImage((uchar*) hsv_mat.data, hsv_mat.cols, hsv_mat.rows,
+                                                hsv_mat.cols*hsv_mat.channels(), QImage::Format_RGB888);
+                        }
+                        m_displayImage.save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
+                    }
+                    else
+                    {
+                        rgbImg.save(&buf,"JPEG",g_frame_quality);
+                    }
                 }
-
-                //选择最大面积的轮廓
-                int max_pos = (int)(max_element(areaVec.begin(), areaVec.end()) - areaVec.begin());
-
-                cvtColor(hsv_mat,hsv_mat,COLOR_GRAY2RGB);
-                if (max_pos < (int)contours.size())
-                {
-
-                    Rect findRect = boundingRect(contours[max_pos]);
-                    rectangle(hsv_mat, findRect, Scalar(0,255,0),2);
-                    circle(hsv_mat, mc[max_pos], 5, Scalar(0,0,255)); //在重心坐标画圆
-                }
-                hsvImg = new QImage((uchar*) hsv_mat.data, hsv_mat.cols, hsv_mat.rows,
-                                    hsv_mat.cols*hsv_mat.channels(), QImage::Format_RGB888);
-
-                hsvImg->save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
             }
 
             QByteArray datagram;

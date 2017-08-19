@@ -94,6 +94,9 @@ private:
     QString getLocalIP4Address() const;
     bool parseData(const QString &msg);
     void modifyNetworkFile(const QString &id, const QString &password);
+
+    qint32 m_bufferReadSize;
+    qint32 m_bufferTotalSize;
 };
 
 #endif // SERVER_H

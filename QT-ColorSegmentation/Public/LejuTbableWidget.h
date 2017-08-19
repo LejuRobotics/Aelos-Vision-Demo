@@ -52,6 +52,7 @@ public:
     QString lastName() const;
     int lastType() const;
     int lastTurn() const;
+    bool isAllFinished() const;
 
 protected:
     virtual void contextMenuEvent(QContextMenuEvent *e);

@@ -56,6 +56,8 @@ VideoArea::VideoArea(QWidget *parent) :
     m_centerAreaRatio = 0.4;
     m_rorationRange = 0.25;
     m_isConnected = false;
+    m_bufferReadSize = 0;
+    m_bufferTotalSize = 0;
 
     portSetupDialog = new PortSetupDialog(this);
     portSetupDialog->hide();
@@ -125,9 +127,11 @@ void VideoArea::WriteData(const QByteArray &msg)
 
     QByteArray outBlock;
     QDataStream out(&outBlock,QIODevice::WriteOnly);
-    out.setVersion(QDataStream::Qt_5_3);
-    out<<msg;
+    out << qint32(0);
+    out.device()->seek(0);
+    out << outBlock.size() + msg.size() << msg;
     m_long_socket->write(outBlock);
+    m_long_socket->waitForBytesWritten();
 }
 
 /**
@@ -185,167 +189,204 @@ void VideoArea::onStartConnectTo(const QString &ip)
 
 void VideoArea::onLongSocketReadyRead()
 {
-    QByteArray message;
     QDataStream in(m_long_socket);
-    in.setVersion(QDataStream::Qt_5_3);
-    in >> message;
-    QString readData = QString::fromUtf8(message);
-    ui->textEdit->append(readData);
+    if (m_bufferReadSize == 0)
+    {
+        if (m_long_socket->bytesAvailable() <= sizeof(qint32))
+            return;
 
-    if (readData.startsWith("Connect to server successful"))
-    {
-        WriteData(QString("95f41ce1").toUtf8());
-    }
-    else if (readData == "676f7a75")
-    {
-        WriteData(QString("Start.Running\r\n").toUtf8());
-        m_isConnected = true;
-    }
-    else if (readData.contains("is connecting to the server"))
-    {
-        m_long_socket->abort();
-    }
-    else if (readData.startsWith("From server:"))
-    {
-        QStringList msgList = readData.split("\r\n");
-        foreach (const QString &item, msgList)
+        in >> m_bufferTotalSize;
+        m_bufferReadSize += sizeof(qint32);
+
+        QByteArray receiveByteArray;
+        in >> receiveByteArray;
+        m_bufferReadSize += receiveByteArray.size();
+        if (m_bufferReadSize == m_bufferTotalSize)
         {
-            if (item.startsWith("Camera.Resolution"))
+            QString readData = QString::fromUtf8(receiveByteArray);
+            ui->textEdit->append(readData);
+
+            if (readData.startsWith("Connect to server successful"))
             {
-                QString strVal = item.mid(item.indexOf("=")+1);
-                QStringList mList = strVal.split("x");
-                if (mList.size() == 2)
+                WriteData(QString("95f41ce1").toUtf8());
+            }
+            else if (readData == "676f7a75")
+            {
+                WriteData(QString("Start.Running\r\n").toUtf8());
+                m_isConnected = true;
+            }
+            else if (readData.contains("is connecting to the server"))
+            {
+                m_long_socket->abort();
+            }
+            else if (readData.startsWith("From server:"))
+            {
+                QStringList msgList = readData.split("\r\n");
+                foreach (const QString &item, msgList)
                 {
-                    camera_with = mList[0].toInt();
-                    camera_height = mList[1].toInt();
-                    parameterSettingDialog->setValue(ParameterSettingDialog::Resolution, strVal);
+                    if (item.startsWith("Camera.Resolution"))
+                    {
+                        QString strVal = item.mid(item.indexOf("=")+1);
+                        QStringList mList = strVal.split("x");
+                        if (mList.size() == 2)
+                        {
+                            camera_with = mList[0].toInt();
+                            camera_height = mList[1].toInt();
+                            parameterSettingDialog->setValue(ParameterSettingDialog::Resolution, strVal);
+                        }
+                    }
+                    else if (item.startsWith("Image.Quality"))
+                    {
+                        int val = item.mid(item.indexOf("=")+1).toInt();
+                        parameterSettingDialog->setValue(ParameterSettingDialog::ImageQuality, val);
+                    }
+                    else if (item.startsWith("Area.Position"))
+                    {
+                        QStringList nList = item.mid(item.indexOf("=")+1).split(",");
+                        if (nList.size() == 2)
+                        {
+                            m_centerAreaRatio = nList[0].toDouble();
+                            m_rorationRange = nList[1].toDouble();
+                            test_label->drawArea(m_centerAreaRatio, m_rorationRange);
+                            parameterSettingDialog->setValue(ParameterSettingDialog::CenterRatio, m_centerAreaRatio);
+                            parameterSettingDialog->setValue(ParameterSettingDialog::TurnRatio, m_rorationRange);
+                        }
+                    }
+                    else if (item.startsWith("Arrive.Ratio"))
+                    {
+                        double val = item.mid(item.indexOf("=")+1).toDouble();
+                        parameterSettingDialog->setValue(ParameterSettingDialog::ArriveRatio, val);
+                    }
+                    else if (item.startsWith("Access.Ratio"))
+                    {
+                        double val = item.mid(item.indexOf("=")+1).toDouble();
+                        parameterSettingDialog->setValue(ParameterSettingDialog::AccessRatio, val);
+                    }
+                    else if (item.startsWith("Delay.Count"))
+                    {
+                        int val = item.mid(item.indexOf("=")+1).toInt();
+                        parameterSettingDialog->setValue(ParameterSettingDialog::DelayCount, val);
+                    }
+                    else if (item.startsWith("Quick.Count"))
+                    {
+                        int val = item.mid(item.indexOf("=")+1).toInt();
+                        parameterSettingDialog->setValue(ParameterSettingDialog::QuickCount, val);
+                    }
+                    else if (item.startsWith("Slow.Count"))
+                    {
+                        int val = item.mid(item.indexOf("=")+1).toInt();
+                        parameterSettingDialog->setValue(ParameterSettingDialog::SlowCount, val);
+                    }
                 }
             }
-            else if (item.startsWith("Image.Quality"))
+
+            else if (readData.startsWith("@Begin:"))
             {
-                int val = item.mid(item.indexOf("=")+1).toInt();
-                parameterSettingDialog->setValue(ParameterSettingDialog::ImageQuality, val);
-            }
-            else if (item.startsWith("Area.Position"))
-            {
-                QStringList nList = item.mid(item.indexOf("=")+1).split(",");
-                if (nList.size() == 2)
-                {
-                    m_centerAreaRatio = nList[0].toDouble();
-                    m_rorationRange = nList[1].toDouble();
-                    test_label->drawArea(m_centerAreaRatio, m_rorationRange);
-                    parameterSettingDialog->setValue(ParameterSettingDialog::CenterRatio, m_centerAreaRatio);
-                    parameterSettingDialog->setValue(ParameterSettingDialog::TurnRatio, m_rorationRange);
+                QStringList list = readData.split("\r\n");
+                foreach (QString item, list) {
+                   if (item.startsWith("Mark.Rect="))
+                   {
+                       QStringList msgList = item.mid(item.indexOf("=")+1).split(",");
+                       if (msgList.size() == 4)
+                       {
+                           m_original_rect.setX(msgList[0].toInt());
+                           m_original_rect.setY(msgList[1].toInt());
+                           m_original_rect.setWidth(msgList[2].toInt());
+                           m_original_rect.setHeight(msgList[3].toInt());
+
+                           int realX = qRound((double)m_original_rect.x() / camera_with * ui->video_label->width());
+                           int realY = qRound((double)m_original_rect.y() / camera_height * ui->video_label->height());
+                           int realW = qRound((double)m_original_rect.width() / camera_with * ui->video_label->width());
+                           int realH = qRound((double)m_original_rect.height() / camera_height * ui->video_label->height());
+
+                           QRect realRect = QRect(realX, realY, realW, realH);
+                           mark_label->drawRect(realRect); //标记画框
+                       }
+                   }
+                   else if (item.startsWith("Unrecognized color"))
+                   {
+                       mark_label->cleanRect(); //清除标记框
+                   }
+                   else if (item.startsWith("Mark.RGB="))
+                   {
+                       m_mark_rgb = item.mid(item.indexOf("=")+1);
+                       mark_label->setMarkColor(m_mark_rgb);
+                       if (!ui->record_btn->isEnabled())
+                       {
+                           ui->record_btn->setEnabled(true);
+                       }
+                   }
                 }
             }
-            else if (item.startsWith("Arrive.Ratio"))
+            else if (readData.startsWith("@Begin HSV:"))
             {
-                double val = item.mid(item.indexOf("=")+1).toDouble();
-                parameterSettingDialog->setValue(ParameterSettingDialog::ArriveRatio, val);
+                QStringList list = readData.split("\r\n");
+                foreach (QString item, list) {
+                   if (item.startsWith("Mark.Rect="))
+                   {
+
+                   }
+                   else if (item.startsWith("Unrecognized color"))
+                   {
+
+                   }
+                   else if (item.startsWith("Max.Width"))
+                   {
+                       int maxWidth = item.mid(item.indexOf("=")+1).toInt();
+                       QString time = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+                       ui->tableWidget->addItem(time,"0,255,0",maxWidth);
+
+                       QString cmd = QString("Add Target=%1,%2,%3,%4,%5,%6,%7,%8,%9,%10")
+                               .arg(ui->tableWidget->lastName())
+                               .arg(maxWidth)
+                               .arg(ui->tableWidget->lastType())
+                               .arg(ui->tableWidget->lastTurn())
+                               .arg(ui->colorMinH_slider->value())
+                               .arg(ui->colorMinS_slider->value())
+                               .arg(ui->colorMinV_slider->value())
+                               .arg(ui->colorMaxH_slider->value())
+                               .arg(ui->colorMaxS_slider->value())
+                               .arg(ui->colorMaxV_slider->value());
+                       WriteData(cmd.toUtf8());
+                   }
+                }
             }
-            else if (item.startsWith("Access.Ratio"))
+            else if (readData.startsWith("Return Current.HSV.Range"))
             {
-                double val = item.mid(item.indexOf("=")+1).toDouble();
-                parameterSettingDialog->setValue(ParameterSettingDialog::AccessRatio, val);
+                QString strVal = readData.mid(readData.indexOf("=")+1);
+                QStringList valList = strVal.split(",");
+                if (valList.length() == 6)
+                {
+                    ui->colorMinH_slider->setValue(valList[0].toInt());
+                    ui->colorMinS_slider->setValue(valList[1].toInt());
+                    ui->colorMinV_slider->setValue(valList[2].toInt());
+                    ui->colorMaxH_slider->setValue(valList[3].toInt());
+                    ui->colorMaxS_slider->setValue(valList[4].toInt());
+                    ui->colorMaxV_slider->setValue(valList[5].toInt());
+                }
             }
-            else if (item.startsWith("Delay.Count"))
+            else if (readData.startsWith("Reach.Target"))
             {
-                int val = item.mid(item.indexOf("=")+1).toInt();
-                parameterSettingDialog->setValue(ParameterSettingDialog::DelayCount, val);
-            }
-            else if (item.startsWith("Quick.Count"))
-            {
-                int val = item.mid(item.indexOf("=")+1).toInt();
-                parameterSettingDialog->setValue(ParameterSettingDialog::QuickCount, val);
-            }
-            else if (item.startsWith("Slow.Count"))
-            {
-                int val = item.mid(item.indexOf("=")+1).toInt();
-                parameterSettingDialog->setValue(ParameterSettingDialog::SlowCount, val);
+                QString strVal = readData.mid(readData.indexOf("=")+1);
+                for (int i=0; i<ui->tableWidget->rowCount(); ++i)
+                {
+                    QString name = ui->tableWidget->item(i, 0)->text();
+                    if (name == strVal)
+                    {
+                        ui->tableWidget->item(i, 6)->setText(tr("已完成"));
+                        break;
+                    }
+                }
+
+                if (ui->tableWidget->isAllFinished())
+                {
+                    ui->manual_radio->setChecked(true);
+                    on_manual_radio_clicked(true);
+                }
             }
         }
-    }
-
-    else if (readData.startsWith("@Begin:"))
-    {
-        QStringList list = readData.split("\r\n");
-        foreach (QString item, list) {
-           if (item.startsWith("Mark.Rect="))
-           {
-               QStringList msgList = item.mid(item.indexOf("=")+1).split(",");
-               if (msgList.size() == 4)
-               {
-                   m_original_rect.setX(msgList[0].toInt());
-                   m_original_rect.setY(msgList[1].toInt());
-                   m_original_rect.setWidth(msgList[2].toInt());
-                   m_original_rect.setHeight(msgList[3].toInt());
-
-                   int realX = qRound((double)m_original_rect.x() / camera_with * ui->video_label->width());
-                   int realY = qRound((double)m_original_rect.y() / camera_height * ui->video_label->height());
-                   int realW = qRound((double)m_original_rect.width() / camera_with * ui->video_label->width());
-                   int realH = qRound((double)m_original_rect.height() / camera_height * ui->video_label->height());
-
-                   QRect realRect = QRect(realX, realY, realW, realH);
-                   mark_label->drawRect(realRect); //标记画框
-               }
-           }
-           else if (item.startsWith("Reach.Target="))
-           {
-               ui->manual_radio->setChecked(true);
-               on_manual_radio_clicked(true);
-           }
-           else if (item.startsWith("Unrecognized color"))
-           {
-               mark_label->cleanRect(); //清除标记框
-           }
-           else if (item.startsWith("Mark.RGB="))
-           {
-               m_mark_rgb = item.mid(item.indexOf("=")+1);
-               mark_label->setMarkColor(m_mark_rgb);
-               if (!ui->record_btn->isEnabled())
-               {
-                   ui->record_btn->setEnabled(true);
-               }
-           }
-        }
-    }
-    else if (readData.startsWith("@Begin HSV:"))
-    {
-        QStringList list = readData.split("\r\n");
-        foreach (QString item, list) {
-           if (item.startsWith("Mark.Rect="))
-           {
-
-           }
-           else if (item.startsWith("Reach.Target="))
-           {
-               ui->manual_radio->setChecked(true);
-               on_manual_radio_clicked(true);
-           }
-           else if (item.startsWith("Unrecognized color"))
-           {
-
-           }
-           else if (item.startsWith("Max.Width"))
-           {
-               int maxWidth = item.mid(item.indexOf("=")+1).toInt();
-               QString time = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-               ui->tableWidget->addItem(time,"0,255,0",maxWidth);
-
-               QString cmd = QString("Add Target=%1,%2,%3,%4,%5,%6,%7,%8,%9,%10")
-                       .arg(ui->tableWidget->lastName())
-                       .arg(maxWidth)
-                       .arg(ui->tableWidget->lastType())
-                       .arg(ui->tableWidget->lastTurn())
-                       .arg(ui->colorMinH_slider->value())
-                       .arg(ui->colorMinS_slider->value())
-                       .arg(ui->colorMinV_slider->value())
-                       .arg(ui->colorMaxH_slider->value())
-                       .arg(ui->colorMaxS_slider->value())
-                       .arg(ui->colorMaxV_slider->value());
-               WriteData(cmd.toUtf8());
-           }
-        }
+        m_bufferReadSize = 0;
+        m_bufferTotalSize = 0;
     }
 }
 
@@ -734,7 +775,7 @@ void VideoArea::startSliderTimer()
 {
     if (!m_sliderTimer->isActive())
     {
-        m_sliderTimer->start(300);
+        m_sliderTimer->start(200);
     }
 }
 
@@ -749,19 +790,27 @@ void VideoArea::onSliderTimeout()
 }
 
 /**
- * @brief    当选择RGB按钮的时候，设置图片格式为RGB
+ * @brief    显示原图
  */
 
-void VideoArea::on_rgb_radio_toggled(bool checked)
+void VideoArea::on_original_radio_toggled(bool checked)
 {
     if (checked)
     {
-        ui->record_btn->setEnabled(false);
-        ui->colorY_label->setEnabled(false);
-        ui->colorY_slider->setEnabled(false);
-        ui->hsvGroupBox->setEnabled(false);
+        QString msg("set Image.Display=Original");
+        WriteData(msg.toUtf8());
+    }
+}
 
-        QString msg("set Image.Format=RGB");
+/**
+ * @brief    显示转换后的图片
+ */
+
+void VideoArea::on_transform_radio_toggled(bool checked)
+{
+    if (checked)
+    {
+        QString msg("set Image.Display=Transform");
         WriteData(msg.toUtf8());
     }
 }
@@ -893,4 +942,18 @@ void VideoArea::on_colorMaxV_slider_valueChanged(int value)
 void VideoArea::addInfomation(const QString &msg)
 {
     ui->textEdit->append(msg);
+}
+
+void VideoArea::on_football_checkBox_clicked(bool checked)
+{
+    QString msg;
+    if (checked)
+    {
+        msg.append("set Object.Type=football");
+    }
+    else
+    {
+        msg.append("set Object.Type=Null");
+    }
+    WriteData(msg.toUtf8());
 }

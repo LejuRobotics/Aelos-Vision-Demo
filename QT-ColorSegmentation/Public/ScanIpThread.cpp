@@ -54,12 +54,12 @@ void ScanIpThread::setPort(int port)
  * @param     max 终止位置
  */
 
-void ScanIpThread::setScanRange(int third, int min, int max)
+void ScanIpThread::setScanRange(const QString &prefix, int min, int max)
 {
     m_original_list.clear();
     for (int i=min; i<=max; i++)
     {
-        QString addr = QString("192.168.%1.%2").arg(third).arg(i);
+        QString addr = QString("%1.%2").arg(prefix).arg(i);
         m_original_list.append(addr);
     }
 }
