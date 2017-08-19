@@ -39,18 +39,21 @@ public:
     ~VideoArea();
 
 private slots:    
-    void WriteData(const QByteArray &msg);
+    void WriteData(const QByteArray &msg); //发送TCP消息
 
-    void on_connect_btn_clicked();
+    void on_connect_btn_clicked();  //点击"Connect"按钮
     void onStartConnectTo(const QString &ip);
 
-    void onLongSocketReadyRead();
+    void onLongSocketReadyRead();   //接收TCP消息
     void onSocketDisconnect();
 
-    void onUdpSocketReadyRead();
+    void onUdpSocketReadyRead();    //接收UDP消息，包括摄像头图像和ip地址
     void onTimeout();
 
     void selectFinished(const QRect &_rect);
+    void onUdpPortChanged();
+    void onWifiChanged(const QString &userName, const QString &password);
+    void addInfomation(const QString &msg);
 
     //点击菜单栏按钮
     void onActioPortClicked();
@@ -64,15 +67,11 @@ private slots:
     void on_manual_radio_clicked(bool checked); //点击manual按钮
     void onActionButtonGroupClicked(int btnID);  //点击动作按钮，如Quick walk, Quick back等
 
-    void onUdpPortChanged();
-    void onWifiChanged(const QString &userName, const QString &password);
-
-    void onSliderTimeout();
-
-    //选择图像格式
-    void on_rgb_radio_toggled(bool checked);
-    void on_yuv_radio_toggled(bool checked);
-    void on_hsv_radio_toggled(bool checked);
+    void on_original_radio_toggled(bool checked);  //显示原图
+    void on_transform_radio_toggled(bool checked); //显示转换后的图
+    void on_yuv_radio_toggled(bool checked);  //选中YUV格式
+    void on_hsv_radio_toggled(bool checked);  //选中HSV格式
+    void on_football_checkBox_clicked(bool checked);  //识别足球
 
     //亮度，对比度，Y值, HSV值滚动条
     void on_colorY_slider_valueChanged(int value);
@@ -85,7 +84,7 @@ private slots:
     void on_colorMaxS_slider_valueChanged(int value);
     void on_colorMaxV_slider_valueChanged(int value);
 
-    void addInfomation(const QString &msg);
+    void onSliderTimeout();
 
 protected:
     virtual void resizeEvent(QResizeEvent *e) Q_DECL_OVERRIDE;
@@ -116,6 +115,9 @@ private:
 
     QTcpSocket *m_long_socket;
     bool m_isConnected;
+
+    qint32 m_bufferReadSize;
+    qint32 m_bufferTotalSize;
 
     QUdpSocket *udpSocket;
     QImage m_load_image;

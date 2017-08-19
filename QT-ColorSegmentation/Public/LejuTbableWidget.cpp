@@ -13,9 +13,10 @@
 LejuTbableWidget::LejuTbableWidget(QWidget *parent) : QTableWidget(parent)
 {
     //设置表头
-    setColumnCount(6);
+    setColumnCount(7);
     m_headLabelList << tr("Name") << tr("Time") << tr("Color")
-                    << tr("Width") << tr("Type") << tr("Turn");
+                    << tr("Width") << tr("Type") << tr("Turn")
+                    << tr("State");
     setHorizontalHeaderLabels(m_headLabelList);
 
     horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
@@ -24,6 +25,7 @@ LejuTbableWidget::LejuTbableWidget(QWidget *parent) : QTableWidget(parent)
     horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+    horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
 
     //创建右键菜单
     menu = new QMenu(this);
@@ -62,9 +64,11 @@ void LejuTbableWidget::addItem(const QString &pTime, const QString &pColor, int 
     setItem(rowCount()-1,3,new QTableWidgetItem(QString::number(pWidth)));
     setCellWidget(rowCount()-1, 4, combox);
     setCellWidget(rowCount()-1, 5, combox_2);
+    setItem(rowCount()-1,6,new QTableWidgetItem(tr("未完成")));
 
     item(rowCount()-1,1)->setTextAlignment(Qt::AlignCenter);
     item(rowCount()-1,3)->setTextAlignment(Qt::AlignCenter);
+    item(rowCount()-1,6)->setTextAlignment(Qt::AlignCenter);
 }
 
 QString LejuTbableWidget::lastName() const
@@ -82,6 +86,18 @@ int LejuTbableWidget::lastTurn() const
 {
     QComboBox *box = (QComboBox*)cellWidget(rowCount()-1,5);
     return box->currentIndex();
+}
+
+bool LejuTbableWidget::isAllFinished() const
+{
+    for (int i=0; i<rowCount(); ++i)
+    {
+        if (item(i, 6)->text() == tr("未完成"))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 void LejuTbableWidget::onDeleteItem()

@@ -41,7 +41,7 @@ protected:
 
 signals:
     void sendInfo(const QString &);
-    void sendFrame(QImage *);
+    void sendFrame(QImage &);
 
 private:
     bool isPause;
@@ -53,11 +53,8 @@ private:
     QByteArray byte;
 
     Mat rgb_mat;
-    QImage *rgbImg;
-    Mat yuv_mat;
-    QImage *yuvImg;
-    Mat hsv_mat;
-    QImage *hsvImg;
+    QImage rgbImg;
+    QImage m_displayImage;
 
     double alpha;             /**< 亮度 */
     int beta;                 /**< 对比度 */

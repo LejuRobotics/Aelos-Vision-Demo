@@ -29,7 +29,9 @@ double g_arrive_ratio = 0.9;
 double g_access_ratio = 0.4;
 int g_log_file_switch = 0;
 
-QString G_Image_Format = "RGB";
+QString G_Image_Display = "Original";
+QString G_Image_Format = "HSV";
+QString G_Object_Type = "Null";
 
 const qint64 LOG_FILE_MAX_SIZE = 5*1024*1024;  //日志文件大小的最大值
 

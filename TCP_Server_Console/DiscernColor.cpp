@@ -34,6 +34,14 @@ DiscernColor::DiscernColor(QObject *parent) : QThread(parent)
     m_findCount = 0;
     m_nMoveOnTimeCount = 3000;
     m_bAddHsvFlag = false;
+    m_bIsHsvSelected = false;
+
+    g_hsv_lower[0] = 0;
+    g_hsv_lower[1] = 100;
+    g_hsv_lower[2] = 100;
+    g_hsv_upper[0] = 180;
+    g_hsv_upper[1] = 255;
+    g_hsv_upper[2] = 255;
 }
 
 /**
@@ -77,7 +85,7 @@ void DiscernColor::Reset()
 
 bool DiscernColor::addTarget(const QStringList &list)
 {
-    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    if (G_Image_Format == "YUV")
     {
         if (list.length() != 4)
             return false;
@@ -123,7 +131,7 @@ bool DiscernColor::addTarget(const QStringList &list)
 
 bool DiscernColor::setTargetType(int index, int type)
 {
-    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    if (G_Image_Format == "YUV")
     {
         if (index < m_targetList.size())
         {
@@ -150,7 +158,7 @@ bool DiscernColor::setTargetType(int index, int type)
 
 bool DiscernColor::setTargetTurn(int index, int turn)
 {
-    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    if (G_Image_Format == "YUV")
     {
         if (index < m_targetList.size())
         {
@@ -176,7 +184,7 @@ bool DiscernColor::setTargetTurn(int index, int turn)
 
 bool DiscernColor::removeTarget(int index)
 {
-    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    if (G_Image_Format == "YUV")
     {
         if (index < m_targetList.size())
         {
@@ -247,10 +255,10 @@ void DiscernColor::startAddHsvTarget()
  * @details   每次接收一张图片会用锁锁住，并且复制一张图片，然后放到线程中处理，确保处理好每一帧图片
  */
 
-void DiscernColor::readFrame(QImage *image)
+void DiscernColor::readFrame(QImage &image)
 {
     m_mutex.lock();
-    m_image = image->copy();
+    m_image = image.copy();
     m_image_queue.append(m_image);
     m_mutex.unlock();
     if (!this->isRunning())
@@ -272,7 +280,7 @@ void DiscernColor::run()
         //把QImage转为Mat，格式为RGB
         frame = Mat(nextImage.height(), nextImage.width(), CV_8UC3, (void*)nextImage.constBits(), nextImage.bytesPerLine());
 
-        if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+        if (G_Image_Format == "YUV")
         {
             findColorFromYUV(frame);
         }
@@ -345,11 +353,6 @@ void DiscernColor::findColorFromYUV(Mat &frame)
                 curPosition = Unknown;
                 msg.append("Unrecognized color\r\n");
             }
-
-            if (moveMode == Wait)
-            {
-                msg.append(QString("Reach.Target=%1\r\n").arg(m_targetList[targetNumber].name));
-            }
             msg.append("@End\r\n");
             emit sendInfo(msg);  //发送结果给客户端
 
@@ -365,12 +368,42 @@ void DiscernColor::findColorFromYUV(Mat &frame)
             {
                 obstacleAvoidance();
             }
+            else if (moveMode == Wait)
+            {
+                emit sendInfo(QString("Reach.Target=%1").arg(m_targetList[targetNumber].name));
+            }
         }
     }
 }
 
 void DiscernColor::findColorFaromHSV(Mat &frame)
 {
+    if (m_bIsHsvSelected)
+    {
+        cvtColor(frame,hsv_mat,COLOR_RGB2HSV);
+        cv::Mat frameROI;
+        frameROI = hsv_mat(cv::Rect(m_select_rect.x(), m_select_rect.y(), m_select_rect.width(), m_select_rect.height()));
+        cv::Scalar hsvMean = cv::mean(frameROI); //计算选中区域的hsv平均值
+        int val_lower = qRound(hsvMean[0]) - 10;
+        int val_upper = qRound(hsvMean[0]) + 10;
+//        qDebug()<< "---------hsvMean[0]: "<<hsvMean[0];
+        if (val_lower < 0 )
+            val_lower = 0;
+        if (val_upper > 180)
+            val_upper = 180;
+        g_hsv_lower[0] = val_lower;
+        g_hsv_upper[0] = val_upper;
+        QString msg = QString("Return Current.HSV.Range=%1,%2,%3,%4,%5,%6")
+                .arg(g_hsv_lower[0])
+                .arg(g_hsv_lower[1])
+                .arg(g_hsv_lower[2])
+                .arg(g_hsv_upper[0])
+                .arg(g_hsv_upper[1])
+                .arg(g_hsv_upper[2]);
+        emit sendInfo(msg);
+        m_bIsHsvSelected = false;
+    }
+
     if (m_bAddHsvFlag)
     {
         findContoursFromHSV(frame, 0);
@@ -413,7 +446,6 @@ void DiscernColor::findContoursFromHSV(Mat &frame, int type)
         inRange(hsv_mat, m_hsvTargetList[m_hsvTargetNum].hsvLower, m_hsvTargetList[m_hsvTargetNum].hsvUpper, hsv_mat);
     }
 
-    int g_nStructElementSize = 9; //结构元素(内核矩阵)的尺寸
     cv::Mat str_el = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(g_nStructElementSize, g_nStructElementSize));
 
     //腐蚀操作
@@ -436,6 +468,7 @@ void DiscernColor::findContoursFromHSV(Mat &frame, int type)
         double tmparea = fabs(contourArea(contours[i]));
         areaVec.push_back(tmparea);
 
+        //计算重心
         mu[i] = moments(contours[i], false);
         mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
     }
@@ -465,17 +498,11 @@ void DiscernColor::findContoursFromHSV(Mat &frame, int type)
             QPoint pos(mc[max_pos].x, mc[max_pos].y);
             calculateDirection2(pos);
         }
-//            circle(frame, mc[max_pos], 10, Scalar(0,255,0)); //在重心坐标画圆
     }
     else
     {
         curPosition = Unknown;
         msg.append("Unrecognized color\r\n");
-    }
-
-    if (moveMode == Wait)
-    {
-        msg.append(QString("Reach.Target=%1\r\n").arg(m_hsvTargetList[m_hsvTargetNum].name));
     }
     msg.append("@End\r\n");
     emit sendInfo(msg);  //发送结果给客户端
@@ -492,7 +519,11 @@ void DiscernColor::findContoursFromHSV(Mat &frame, int type)
         }
         else if (moveMode == Obstacle)
         {
-            obstacleAvoidance();
+            obstacleAvoidance();          
+        }
+        else if (moveMode == Wait)
+        {
+            emit sendInfo(QString("Reach.Target=%1").arg(m_hsvTargetList[m_hsvTargetNum].name));
         }
     }
 }
@@ -504,7 +535,14 @@ void DiscernColor::findContoursFromHSV(Mat &frame, int type)
 
 void DiscernColor::setSelectRect(const QRect &_rect)
 {
-    m_selected = true;
+    if (G_Image_Format == "YUV")
+    {
+        m_selected = true;
+    }
+    else if (G_Image_Format == "HSV")
+    {
+        m_bIsHsvSelected = true;
+    }
     m_select_rect = _rect;
 }
 
@@ -666,7 +704,7 @@ void DiscernColor::calculateDirection2(const QPoint &pos)
 
 void DiscernColor::compareTargetWidth(int index)
 {
-    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    if (G_Image_Format == "YUV")
     {
         if (currentMark.width() > (int)(m_targetList[index].maxWidth*g_arrive_ratio))
         {
@@ -722,7 +760,7 @@ void DiscernColor::compareTargetWidth(int index)
 
 int DiscernColor::currentTarget() const
 {
-    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    if (G_Image_Format == "YUV")
     {
         for (int i=0; i<m_targetList.size(); ++i)
         {
@@ -819,7 +857,7 @@ void DiscernColor::accessTarget()
 void DiscernColor::obstacleAvoidance()
 {
     int turn;
-    if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+    if (G_Image_Format == "YUV")
     {
         turn = m_targetList[targetNumber].turn;
     }
@@ -858,15 +896,20 @@ void DiscernColor::obstacleAvoidance()
             emit directionChanged(g_left_l_command);
         }
 
-        obstacleCount = 0;
-        moveMode = Track;
-        if (G_Image_Format == "RGB" || G_Image_Format == "YUV")
+        if (obstacleCount == 5)
         {
-            m_targetList[targetNumber].state = 1;
-        }
-        else if (G_Image_Format == "HSV")
-        {
-            m_hsvTargetList[m_hsvTargetNum].state = 1;
+            obstacleCount = 0;
+            moveMode = Track;
+            if (G_Image_Format == "YUV")
+            {
+                m_targetList[targetNumber].state = 1;
+                emit sendInfo(QString("Reach.Target=%1").arg(m_targetList[targetNumber].name));
+            }
+            else if (G_Image_Format == "HSV")
+            {
+                m_hsvTargetList[m_hsvTargetNum].state = 1;
+                emit sendInfo(QString("Reach.Target=%1").arg(m_hsvTargetList[m_hsvTargetNum].name));
+            }
         }
     }
 }
@@ -1025,3 +1068,33 @@ unsigned char DiscernColor::GetLabel(ColorInfo &info, unsigned char *source, int
 {
    return info.channelLUT[0][source[3*pIndex+1]] & info.channelLUT[1][source[3*pIndex+2]];
 }
+
+//void DiscernColor::findFootBall()
+//{
+//    Mat midImage, dstImage;//临时变量和目标图的定义
+
+//    //【3】转为灰度图，进行图像平滑
+//    cvtColor(srcImage, midImage, CV_BGR2GRAY);//转化边缘检测后的图为灰度图
+//    GaussianBlur(midImage, midImage, Size(9, 9), 2, 2); //高斯模糊算法
+
+//    //【4】进行霍夫圆变换
+//    vector<Vec3f> circles;//保存矢量
+////    HoughCircles(midImage, circles, CV_HOUGH_GRADIENT, 1.5, 10, 200, 100, 0, 0);
+//    HoughCircles(midImage, circles, CV_HOUGH_GRADIENT, 1, 50, 100, 60, 0, 0);
+
+//    //【5】依次在图中绘制出圆
+//    qDebug()<< "circles.size(): "<<circles.size();
+//    for (size_t i = 0; i < circles.size(); i++)
+//    {
+//        Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+//        int radius = cvRound(circles[i][2]);
+//        //绘制圆心
+//        circle(srcImage, center, 3, Scalar(0, 255, 0), -1, 8, 0);
+//        //绘制圆轮廓
+//        circle(srcImage, center, radius, Scalar(155, 50, 255), 3, 8, 0);
+//        //Scalar(55,100,195)参数中G、B、R颜色值的数值，得到想要的颜色
+//    }
+//    displayImage(srcImage, 1);
+
+
+//}
