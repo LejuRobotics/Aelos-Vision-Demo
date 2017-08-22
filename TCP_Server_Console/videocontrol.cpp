@@ -26,7 +26,7 @@ VideoControl::VideoControl(QObject *parent) : QThread(parent)
 
 /**
  * @brief     VideoControl类的析构函数
- * @details   关闭并销毁线程，等待3秒，否则强制关闭
+ * @details   关闭并销毁线程，等待1秒，否则强制关闭
  */
 
 VideoControl::~VideoControl()
@@ -37,7 +37,7 @@ VideoControl::~VideoControl()
         delete udpSocket;
     }
     this->quit();
-    if (!this->wait(3000))
+    if (!this->wait(1000))
     {
         this->terminate();
     }
@@ -247,6 +247,7 @@ void VideoControl::run()
                     {
                         Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
                         int radius = cvRound(circles[i][2]);
+//                        qDebug()<< "radius: "<<radius;
                         //绘制圆心
                         circle(football_mat, center, 3, Scalar(0, 255, 0), -1, 8, 0);
                         //绘制圆轮廓
@@ -336,12 +337,21 @@ void VideoControl::run()
                             m_displayImage = QImage((uchar*) hsv_mat.data, hsv_mat.cols, hsv_mat.rows,
                                                 hsv_mat.cols*hsv_mat.channels(), QImage::Format_RGB888);
                         }
-                        m_displayImage.save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
                     }
                     else
                     {
-                        rgbImg.save(&buf,"JPEG",g_frame_quality);
+                        if (G_Image_Display == "Original")
+                        {
+                            m_displayImage = QImage((uchar*) rgb_mat.data, rgb_mat.cols, rgb_mat.rows,
+                                                rgb_mat.cols*rgb_mat.channels(), QImage::Format_RGB888);
+                        }
+                        else if (G_Image_Display == "Transform")
+                        {
+                            m_displayImage = QImage((uchar*) hsv_mat.data, hsv_mat.cols, hsv_mat.rows,
+                                                hsv_mat.cols*hsv_mat.channels(), QImage::Format_RGB888);
+                        }
                     }
+                    m_displayImage.save(&buf,"JPEG",g_frame_quality);  //压缩图片大小
                 }
             }
 

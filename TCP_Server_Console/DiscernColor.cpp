@@ -25,16 +25,18 @@ DiscernColor::DiscernColor(QObject *parent) : QThread(parent)
     isReady = false;
     curPosition = Unknown;
     actionMode = 0;
-    actionStatus = Initial;
+    actionStatus = Finished;
+    lastActionStatus = Finished;
     moveMode = Track;
     w = g_frame_width;
     h = g_frame_height;
-    sizeThreshold = 100;
+    sizeThreshold = (int)(100 * (g_frame_width/640.0));
     obstacleCount = 0;
     m_findCount = 0;
     m_nMoveOnTimeCount = 3000;
     m_bAddHsvFlag = false;
-    m_bIsHsvSelected = false;
+    m_bShootFinished = false;
+    m_shootActionCount = 0;
 
     g_hsv_lower[0] = 0;
     g_hsv_lower[1] = 100;
@@ -46,14 +48,14 @@ DiscernColor::DiscernColor(QObject *parent) : QThread(parent)
 
 /**
  * @brief     DiscernColor类的析构函数
- * @details   关闭线程,如果等待时间超过3s强制关闭
+ * @details   关闭线程,如果等待时间超过1s强制关闭
  */
 
 DiscernColor::~DiscernColor()
 {
     m_stopped = true;
     this->quit();
-    if (!this->wait(3000))
+    if (!this->wait(1000))
     {
         this->terminate();
     }
@@ -65,12 +67,15 @@ DiscernColor::~DiscernColor()
 
 void DiscernColor::Reset()
 {
-    isReady = false;
-    curPosition = Unknown;
     actionMode = 0;
-    actionStatus = Initial;
+    actionStatus = Finished;
+    lastActionStatus = Finished;
+    isReady = false;
+    curPosition = Unknown;        
     moveMode = Track;
     obstacleCount = 0;
+    m_shootActionCount = 0;
+    m_bShootFinished = false;
     m_targetList.clear();
     m_hsvTargetList.clear();
 }
@@ -211,17 +216,15 @@ bool DiscernColor::removeTarget(int index)
 
 void DiscernColor::setActionMode(int mode)
 {
+    actionMode = mode;
     if (mode)
     {
-        actionMode = 1;
+        actionStatus = Finished;
         isReady = true;
-        actionStatus = Initial;
     }
     else
     {
-        actionMode = 0;
         isReady = false;
-        actionStatus = Doing;
     }
 }
 
@@ -233,6 +236,15 @@ void DiscernColor::setActionMode(int mode)
 void DiscernColor::setActionStatus(DiscernColor::ActionStatus status)
 {
     actionStatus = status;
+    if (status == Finished)
+    {
+        QTimer::singleShot(g_time_count, this, SLOT(setActionReady()));
+    }
+    else
+    {
+        lastActionStatus = status;
+        isReady = false;
+    }
 }
 
 /**
@@ -276,239 +288,199 @@ void DiscernColor::run()
     while (!m_stopped && !m_image_queue.isEmpty())
     {
         QImage nextImage = m_image_queue.dequeue();
-        Mat frame;
         //把QImage转为Mat，格式为RGB
-        frame = Mat(nextImage.height(), nextImage.width(), CV_8UC3, (void*)nextImage.constBits(), nextImage.bytesPerLine());
+        m_frame = Mat(nextImage.height(), nextImage.width(), CV_8UC3, (void*)nextImage.constBits(), nextImage.bytesPerLine());
 
-        if (G_Image_Format == "YUV")
+        if (actionMode == 0) //手动
         {
-            findColorFromYUV(frame);
+            manualOperation();
         }
-        else if (G_Image_Format == "HSV")
+        else if (actionMode == 1) //自动
         {
-            findColorFaromHSV(frame);
+            autoOperation();
         }
-
         msleep(1);
     }
 }
 
-void DiscernColor::findColorFromYUV(Mat &frame)
+void DiscernColor::manualOperation()
 {
-    QString msg("@Begin:\r\n");
-    if(m_selected)  //当客户端标记一个颜色时
+    if (G_Image_Format == "YUV")
     {
-        addColor(frame);
-        segment(frame, colorInfo, 1);
-        if (getCurrentMark(objList)) //当识别到物体位置
+        QString msg("@Begin:\r\n");
+        if(m_selected)  //当客户端标记一个颜色时
         {
-            if (!m_mark_rgb.isEmpty())
-            {
-                msg.append(m_mark_rgb);
-                m_mark_rgb.clear();
-            }
-            msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
-                       .arg(currentMark.x())
-                       .arg(currentMark.y())
-                       .arg(currentMark.width())
-                       .arg(currentMark.height()));
-
-        }
-        else //没有识别到物体位置
-        {
-            msg.append("Unrecognized color\r\n");
-        }
-        msg.append("@End\r\n");
-        emit sendInfo(msg);  //发送结果给客户端
-        m_selected = false;
-    }
-    else
-    {
-        if (actionMode == 1) //自动
-        {
-            targetNumber = currentTarget();
-            if (actionStatus == Doing || !isReady || targetNumber == -1 || moveMode == Wait)
-            {
-//                continue;
-                return;
-            }
-
-            segment(frame, m_targetList[targetNumber].colorInfo, 1);
+            addColor(m_frame);
+            segment(m_frame, colorInfo, 1);
             if (getCurrentMark(objList)) //当识别到物体位置
             {
+                if (!m_mark_rgb.isEmpty())
+                {
+                    msg.append(m_mark_rgb);
+                    m_mark_rgb.clear();
+                }
                 msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
                            .arg(currentMark.x())
                            .arg(currentMark.y())
                            .arg(currentMark.width())
                            .arg(currentMark.height()));
 
-                if (moveMode != Obstacle)
-                {
-                    compareTargetWidth(targetNumber);
-                }
-                calculateDirection2(currentCenterPoint);
             }
             else //没有识别到物体位置
+            {
+                msg.append("Unrecognized color\r\n");
+            }
+            msg.append("@End\r\n");
+            emit sendInfo(msg);  //发送结果给客户端
+            m_selected = false;
+        }
+    }
+    else if (G_Image_Format == "HSV")
+    {
+        if (m_selected)
+        {
+            cvtColor(m_frame,hsv_mat,COLOR_RGB2HSV);
+            cv::Mat frameROI;
+            frameROI = hsv_mat(cv::Rect(m_select_rect.x(), m_select_rect.y(), m_select_rect.width(), m_select_rect.height()));
+            cv::Scalar hsvMean = cv::mean(frameROI); //计算选中区域的hsv平均值
+            int val_lower = qRound(hsvMean[0]) - 10;
+            int val_upper = qRound(hsvMean[0]) + 10;
+            if (val_lower < 0 )
+                val_lower = 0;
+            if (val_upper > 180)
+                val_upper = 180;
+            g_hsv_lower[0] = val_lower;
+            g_hsv_upper[0] = val_upper;
+            QString msg = QString("Return Current.HSV.Range=%1,%2,%3,%4,%5,%6")
+                    .arg(g_hsv_lower[0])
+                    .arg(g_hsv_lower[1])
+                    .arg(g_hsv_lower[2])
+                    .arg(g_hsv_upper[0])
+                    .arg(g_hsv_upper[1])
+                    .arg(g_hsv_upper[2]);
+            emit sendInfo(msg);
+            m_selected = false;
+        }
+
+        if (m_bAddHsvFlag)
+        {
+            //转到HSV空间
+            cvtColor(m_frame,hsv_mat,COLOR_RGB2HSV);
+
+            //根据阈值构建掩膜
+            inRange(hsv_mat, g_hsv_lower, g_hsv_upper, hsv_mat);
+
+            cv::Mat str_el = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(g_nStructElementSize, g_nStructElementSize));
+
+            //腐蚀操作
+            erode(hsv_mat, hsv_mat, str_el);
+            //膨胀操作，其实先腐蚀再膨胀的效果是开运算，去除噪点
+            dilate(hsv_mat, hsv_mat, str_el);
+
+            //轮廓检测
+            vector<vector<Point> > contours;
+            findContours(hsv_mat, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+            vector<Moments>mu(contours.size());
+            vector<Point2f>mc(contours.size());
+            vector<double> areaVec;
+            for (size_t i=0; i<contours.size(); ++i)
+            {
+                //计算轮廓的面积
+                double tmparea = fabs(contourArea(contours[i]));
+                areaVec.push_back(tmparea);
+
+                //计算重心
+                mu[i] = moments(contours[i], false);
+                mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+            }
+
+            int max_pos = (int)(max_element(areaVec.begin(), areaVec.end()) - areaVec.begin());
+
+            QString msg("@Begin HSV:\r\n");
+            if (max_pos < (int)contours.size())
+            {
+                m_hsvCurrentMark = boundingRect(contours[max_pos]);
+                msg.append(QString("Max.Width=%1\r\n").arg(m_hsvCurrentMark.width));
+            }
+            else
             {
                 curPosition = Unknown;
                 msg.append("Unrecognized color\r\n");
             }
             msg.append("@End\r\n");
             emit sendInfo(msg);  //发送结果给客户端
-
-            if (moveMode == Track)
-            {
-                trackingTarget();
-            }
-            else if (moveMode == Access)
-            {
-                accessTarget();
-            }
-            else if (moveMode == Obstacle)
-            {
-                obstacleAvoidance();
-            }
-            else if (moveMode == Wait)
-            {
-                emit sendInfo(QString("Reach.Target=%1").arg(m_targetList[targetNumber].name));
-            }
+            m_bAddHsvFlag = false;
         }
     }
 }
 
-void DiscernColor::findColorFaromHSV(Mat &frame)
+void DiscernColor::autoOperation()
 {
-    if (m_bIsHsvSelected)
+    if (G_Image_Format == "YUV")
     {
-        cvtColor(frame,hsv_mat,COLOR_RGB2HSV);
-        cv::Mat frameROI;
-        frameROI = hsv_mat(cv::Rect(m_select_rect.x(), m_select_rect.y(), m_select_rect.width(), m_select_rect.height()));
-        cv::Scalar hsvMean = cv::mean(frameROI); //计算选中区域的hsv平均值
-        int val_lower = qRound(hsvMean[0]) - 10;
-        int val_upper = qRound(hsvMean[0]) + 10;
-//        qDebug()<< "---------hsvMean[0]: "<<hsvMean[0];
-        if (val_lower < 0 )
-            val_lower = 0;
-        if (val_upper > 180)
-            val_upper = 180;
-        g_hsv_lower[0] = val_lower;
-        g_hsv_upper[0] = val_upper;
-        QString msg = QString("Return Current.HSV.Range=%1,%2,%3,%4,%5,%6")
-                .arg(g_hsv_lower[0])
-                .arg(g_hsv_lower[1])
-                .arg(g_hsv_lower[2])
-                .arg(g_hsv_upper[0])
-                .arg(g_hsv_upper[1])
-                .arg(g_hsv_upper[2]);
-        emit sendInfo(msg);
-        m_bIsHsvSelected = false;
+        autoForYUV();
     }
-
-    if (m_bAddHsvFlag)
+    else if (G_Image_Format == "HSV")
     {
-        findContoursFromHSV(frame, 0);
-        m_bAddHsvFlag = false;
-    }
-    else
-    {
-        if (actionMode == 1) //自动
-        {
-            findContoursFromHSV(frame, 1);
-        }
+        autoForHSV();
     }
 }
 
-void DiscernColor::findContoursFromHSV(Mat &frame, int type)
+void DiscernColor::autoForYUV()
 {
-    if (type == 0)
+    targetNumber = currentTarget();
+    if (targetNumber != -1)
     {
-        //转到HSV空间
-        cvtColor(frame,hsv_mat,COLOR_RGB2HSV);
-
-        //根据阈值构建掩膜
-        inRange(hsv_mat, g_hsv_lower, g_hsv_upper, hsv_mat);
-    }
-    else
-    {
-        m_hsvTargetNum = currentTarget();
-        if (actionStatus == Doing || !isReady || m_hsvTargetNum == -1 || moveMode == Wait)
+        QString msg("@Begin:\r\n");
+        if (actionStatus != Finished || !isReady || moveMode == Wait)
         {
             return;
         }
 
-        g_hsv_lower = m_hsvTargetList[m_hsvTargetNum].hsvLower;
-        g_hsv_upper = m_hsvTargetList[m_hsvTargetNum].hsvUpper;
-
-        //转到HSV空间
-        cvtColor(frame,hsv_mat,COLOR_RGB2HSV);
-
-        //根据阈值构建掩膜
-        inRange(hsv_mat, m_hsvTargetList[m_hsvTargetNum].hsvLower, m_hsvTargetList[m_hsvTargetNum].hsvUpper, hsv_mat);
-    }
-
-    cv::Mat str_el = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(g_nStructElementSize, g_nStructElementSize));
-
-    //腐蚀操作
-    erode(hsv_mat, hsv_mat, str_el);
-    //膨胀操作，其实先腐蚀再膨胀的效果是开运算，去除噪点
-    dilate(hsv_mat, hsv_mat, str_el);
-
-    //轮廓检测
-    vector<vector<Point> > contours;
-    findContours(hsv_mat, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-//        if ((int)contours.size() < 0)
-//            return;
-
-    vector<Moments>mu(contours.size());
-    vector<Point2f>mc(contours.size());
-    vector<double> areaVec;
-    for (size_t i=0; i<contours.size(); ++i)
-    {
-        //计算轮廓的面积
-        double tmparea = fabs(contourArea(contours[i]));
-        areaVec.push_back(tmparea);
-
-        //计算重心
-        mu[i] = moments(contours[i], false);
-        mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
-    }
-
-    int max_pos = (int)(max_element(areaVec.begin(), areaVec.end()) - areaVec.begin());
-
-    QString msg("@Begin HSV:\r\n");
-    if (max_pos < (int)contours.size())
-    {
-        m_hsvCurrentMark = boundingRect(contours[max_pos]);
-        if (type == 0)
-        {
-            msg.append(QString("Max.Width=%1\r\n").arg(m_hsvCurrentMark.width));
-        }
-        else
+        segment(m_frame, m_targetList[targetNumber].colorInfo, 1);
+        if (getCurrentMark(objList)) //当识别到物体位置
         {
             msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
-                       .arg(m_hsvCurrentMark.x)
-                       .arg(m_hsvCurrentMark.y)
-                       .arg(m_hsvCurrentMark.width)
-                       .arg(m_hsvCurrentMark.height));
+                       .arg(currentMark.x())
+                       .arg(currentMark.y())
+                       .arg(currentMark.width())
+                       .arg(currentMark.height()));
 
             if (moveMode != Obstacle)
             {
-                compareTargetWidth(m_hsvTargetNum);
-            }
-            QPoint pos(mc[max_pos].x, mc[max_pos].y);
-            calculateDirection2(pos);
-        }
-    }
-    else
-    {
-        curPosition = Unknown;
-        msg.append("Unrecognized color\r\n");
-    }
-    msg.append("@End\r\n");
-    emit sendInfo(msg);  //发送结果给客户端
+                if (currentMark.width() > (int)(m_targetList[targetNumber].maxWidth*g_arrive_ratio))
+                {
+                    if (m_targetList[targetNumber].type == 0)
+                    {
+                        moveMode = Obstacle;
+                    }
+                    else
+                    {
+                        moveMode = Wait;
+                        m_targetList[targetNumber].state = 1;
+                    }
+                }
+                else if (currentMark.width() > (int)(m_targetList[targetNumber].maxWidth*g_access_ratio))
+                {
+                    moveMode = Access;
+                }
+                else
+                {
+                    moveMode = Track;
+                }
 
-    if (type == 1)
-    {
+            }
+            calculateDirection(currentCenterPoint);
+        }
+        else //没有识别到物体位置
+        {
+            curPosition = Unknown;
+            msg.append("Unrecognized color\r\n");
+        }
+        msg.append("@End\r\n");
+        emit sendInfo(msg);  //发送结果给客户端
+
         if (moveMode == Track)
         {
             trackingTarget();
@@ -519,12 +491,283 @@ void DiscernColor::findContoursFromHSV(Mat &frame, int type)
         }
         else if (moveMode == Obstacle)
         {
-            obstacleAvoidance();          
+            obstacleAvoidance();
+        }
+        else if (moveMode == Wait)
+        {
+            emit sendInfo(QString("Reach.Target=%1").arg(m_targetList[targetNumber].name));
+        }
+    }
+    else
+    {
+
+    }
+}
+
+void DiscernColor::autoForHSV()
+{
+    m_hsvTargetNum = currentTarget();
+    if (m_hsvTargetNum != -1)
+    {
+        if (actionStatus != Finished || !isReady || moveMode == Wait)
+        {
+            return;
+        }
+
+        g_hsv_lower = m_hsvTargetList[m_hsvTargetNum].hsvLower;
+        g_hsv_upper = m_hsvTargetList[m_hsvTargetNum].hsvUpper;
+
+        //转到HSV空间
+        cvtColor(m_frame,hsv_mat,COLOR_RGB2HSV);
+
+        //根据阈值构建掩膜
+        inRange(hsv_mat, m_hsvTargetList[m_hsvTargetNum].hsvLower, m_hsvTargetList[m_hsvTargetNum].hsvUpper, hsv_mat);
+
+        cv::Mat str_el = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(g_nStructElementSize, g_nStructElementSize));
+
+        //腐蚀操作
+        erode(hsv_mat, hsv_mat, str_el);
+        //膨胀操作，其实先腐蚀再膨胀的效果是开运算，去除噪点
+        dilate(hsv_mat, hsv_mat, str_el);
+
+        //轮廓检测
+        vector<vector<Point> > contours;
+        findContours(hsv_mat, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+        vector<Moments>mu(contours.size());
+        vector<Point2f>mc(contours.size());
+        vector<double> areaVec;
+        for (size_t i=0; i<contours.size(); ++i)
+        {
+            //计算轮廓的面积
+            double tmparea = fabs(contourArea(contours[i]));
+            areaVec.push_back(tmparea);
+
+            //计算重心
+            mu[i] = moments(contours[i], false);
+            mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+        }
+
+        int max_pos = (int)(max_element(areaVec.begin(), areaVec.end()) - areaVec.begin());
+
+        QString msg("@Begin HSV:\r\n");
+        if (max_pos < (int)contours.size())
+        {
+            m_hsvCurrentMark = boundingRect(contours[max_pos]);
+            msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
+                       .arg(m_hsvCurrentMark.x)
+                       .arg(m_hsvCurrentMark.y)
+                       .arg(m_hsvCurrentMark.width)
+                       .arg(m_hsvCurrentMark.height));
+
+            if (moveMode != Obstacle)
+            {
+                if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[m_hsvTargetNum].maxWidth*g_arrive_ratio))
+                {
+                    if (m_hsvTargetList[m_hsvTargetNum].type == 0)
+                    {
+                        moveMode = Obstacle;
+                    }
+                    else
+                    {
+                        moveMode = Wait;
+                        m_hsvTargetList[m_hsvTargetNum].state = 1;
+                    }
+                }
+                else if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[m_hsvTargetNum].maxWidth*g_access_ratio))
+                {
+                    moveMode = Access;
+                }
+                else
+                {
+                    moveMode = Track;
+                }
+            }
+            QPoint pos(mc[max_pos].x, mc[max_pos].y);
+            calculateDirection(pos);
+        }
+        else
+        {
+            curPosition = Unknown;
+            msg.append("Unrecognized color\r\n");
+        }
+        msg.append("@End\r\n");
+        emit sendInfo(msg);  //发送结果给客户端
+
+        if (moveMode == Track)
+        {
+            trackingTarget();
+        }
+        else if (moveMode == Access)
+        {
+            accessTarget();
+        }
+        else if (moveMode == Obstacle)
+        {
+            obstacleAvoidance();
         }
         else if (moveMode == Wait)
         {
             emit sendInfo(QString("Reach.Target=%1").arg(m_hsvTargetList[m_hsvTargetNum].name));
         }
+    }
+    else
+    {
+        if (G_Shoot_Flag == 1 && !m_bShootFinished)  //足球
+        {
+            autoForFootball();
+        }
+    }
+}
+
+void DiscernColor::autoForFootball()
+{
+    //转为灰度图，进行图像平滑
+    Mat football_mat;
+    cvtColor(m_frame, football_mat, CV_BGR2GRAY);//转化边缘检测后的图为灰度图
+    GaussianBlur(football_mat, football_mat, Size(9, 9), 2, 2); //高斯模糊算法
+
+    //进行霍夫圆变换
+    vector<Vec3f> circles;//保存矢量
+    HoughCircles(football_mat, circles, CV_HOUGH_GRADIENT, 2, football_mat.rows/4, 200, 100, 0, 0);
+
+    if (moveMode == Shoot && actionStatus == Finished && isReady)
+    {
+        shootFootball();
+    }
+    else
+    {
+        if ((int)circles.size() == 0) //没有找到圆形目标
+        {
+            if (m_footballContours.size() > 0)
+            {
+                QPoint centerPos;
+                int radius = 0;
+                if (m_footballContours.size() == 1)
+                {
+                    centerPos.setX(cvRound(m_footballContours[0][0]));
+                    centerPos.setY(cvRound(m_footballContours[0][1]));
+                    radius = cvRound(m_footballContours[0][2]);
+                }
+                else
+                {
+                    vector<int> radiusVec;
+                    for (size_t i = 0; i < m_footballContours.size(); i++) {
+                        int radius = cvRound(m_footballContours[i][2]);
+                        radiusVec.push_back(radius);
+                    }
+
+                    //从小到大排序
+                    std::sort(radiusVec.begin(), radiusVec.end());
+                    //选择中值
+                    int p = 0;
+                    if (radiusVec.size()%2)
+                    {
+                        p = radiusVec.size()/2;
+                    }
+                    else
+                    {
+                        p = (radiusVec.size()+1)/2;
+                    }
+                    centerPos.setX(cvRound(m_footballContours[p][0]));
+                    centerPos.setY(cvRound(m_footballContours[p][1]));
+                    radius = cvRound(m_footballContours[p][2]);
+                }
+                m_footballContours.clear();
+                trackFootball(centerPos, radius);
+            }
+            else
+            {
+                if (actionStatus == Finished && isReady)
+                {
+                    if (lastActionStatus != StoopDown)
+                    {
+                        setActionStatus(StoopDown);
+                        emit directionChanged(g_stoop_down_command); //弯腰
+                    }
+                    else
+                    {
+                        m_findCount++;
+                        if (m_findCount > 3)
+                        {
+                            setActionStatus(TurnLeft_L);
+                            emit directionChanged(g_left_l_command);
+                        }
+                        else
+                        {
+                            setActionStatus(TurnRight_L);
+                            emit directionChanged(g_right_l_command);
+                        }
+                        if (m_findCount > 1000)
+                            m_findCount = 4;
+                    }
+                }
+            }
+        }
+        else  //找到圆形目标
+        {
+            m_findCount = 0;
+            if (actionStatus == Finished && isReady)
+            {
+                //如果识别到多个圆，选取最大的那个
+                vector<int> radiusVec;
+                for (size_t i = 0; i < circles.size(); i++)
+                {
+                    int radius = cvRound(circles[i][2]);
+                    radiusVec.push_back(radius);
+                }
+                int max_pos = (int)(max_element(radiusVec.begin(), radiusVec.end()) - radiusVec.begin());
+                if (max_pos < (int)(circles.size()))
+                {
+                    QPoint center(cvRound(circles[max_pos][0]), cvRound(circles[max_pos][1]));
+                    trackFootball(center, radiusVec[max_pos]);
+                }
+            }
+            else
+            {
+                if (lastActionStatus == StoopDown)
+                {
+                    vector<int> radiusVec;
+                    for (size_t i = 0; i < circles.size(); i++)
+                    {
+                        int radius = cvRound(circles[i][2]);
+                        radiusVec.push_back(radius);
+                    }
+                    int max_pos = (int)(max_element(radiusVec.begin(), radiusVec.end()) - radiusVec.begin());
+                    if (max_pos < (int)(circles.size()))
+                    {
+                        m_footballContours.push_back(circles[max_pos]);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void DiscernColor::trackFootball(const QPoint &center, int &radius)
+{
+    calculateDirection(center);
+
+    if (radius > (int)(G_Football_Radius*g_arrive_ratio))
+    {
+        moveMode = Shoot;
+    }
+    else if (radius > (int)(G_Football_Radius*g_access_ratio))
+    {
+        moveMode = Access;
+    }
+    else
+    {
+        moveMode = Track;
+    }
+
+
+    if (moveMode == Track)
+    {
+        trackingTarget();
+    }
+    else if (moveMode == Access)
+    {
+        accessTarget();
     }
 }
 
@@ -535,14 +778,7 @@ void DiscernColor::findContoursFromHSV(Mat &frame, int type)
 
 void DiscernColor::setSelectRect(const QRect &_rect)
 {
-    if (G_Image_Format == "YUV")
-    {
-        m_selected = true;
-    }
-    else if (G_Image_Format == "HSV")
-    {
-        m_bIsHsvSelected = true;
-    }
+    m_selected = true;
     m_select_rect = _rect;
 }
 
@@ -587,16 +823,6 @@ bool DiscernColor::getCurrentMark(const vector<Object *> &objList)
         curIndex = areaVec.size()-1;
     }
 
-//    //排除过大和过小的标记框
-//    int nMaxSize = 20000;
-//    int nMinSize = 30;
-//    int curSize = rectW*rectH;
-//    qDebug()<< "curSize: "<<curSize;
-//    if (curSize < nMinSize || curSize > nMaxSize)
-//    {
-//        return false;
-//    }
-
     //更新标记框
     currentMark.setX(rectX);
     currentMark.setY(rectY);
@@ -609,67 +835,11 @@ bool DiscernColor::getCurrentMark(const vector<Object *> &objList)
 }
 
 /**
- * @brief     根据计算识别到的标记框位置判断物体方向
- * @details   目前我们划分了一个中间区域，由g_horizontal_ratio这个值控制，该值可以通过配置文件更改,
- *            另外设置了一个关于转动的区域，如果在这个区域内则执行小幅度转动，否则执行大幅度转动
- */
-
-void DiscernColor::calculateDirection()
-{
-//    if ( (currentMark.x()+currentMark.width()) <= (g_frame_width*g_horizontal_ratio) )
-//    {
-//        curPosition = Left;
-//    }
-//    else if ( (currentMark.x()+currentMark.width() - g_frame_width*g_horizontal_ratio) <= (currentMark.width()*g_object_ratio) )
-//    {
-//        curPosition = Left;
-//    }
-
-//    else if (currentMark.x() >= g_frame_width*(1.0-g_horizontal_ratio))
-//    {
-//        curPosition = Right;
-//    }
-//    else if ( (currentMark.x() < g_frame_width*(1.0-g_horizontal_ratio)) &&
-//             ((currentMark.x()+currentMark.width() - g_frame_width*(1.0-g_horizontal_ratio)) >= (currentMark.width()*g_object_ratio)) )
-//    {
-//        curPosition = Right;
-//    }
-//    else
-//    {
-//        curPosition = Center;
-//    }
-
-//    if (curPosition == Left)
-//    {
-//        if (currentMark.x() <= qRound(g_frame_width*g_horizontal_ratio*g_rotation_range))
-//        {
-//            m_left_command = g_left_l_command;
-//        }
-//        else
-//        {
-//            m_left_command = g_left_s_command;
-//        }
-//    }
-
-//    if (curPosition == Right)
-//    {
-//        if (currentMark.x() <= (qRound(g_frame_width*(1-g_horizontal_ratio)) + qRound(g_frame_width*g_horizontal_ratio*(1-g_rotation_range))))
-//        {
-//            m_right_command = g_right_s_command;
-//        }
-//        else
-//        {
-//            m_right_command = g_right_l_command;
-//        }
-//    }
-}
-
-/**
  * @brief     通过标记框的重心位置或者重心判断物体方向
  * @param     pos 中心点或重心坐标
  */
 
-void DiscernColor::calculateDirection2(const QPoint &pos)
+void DiscernColor::calculateDirection(const QPoint &pos)
 {
     if ( pos.x() < qRound(g_frame_width*g_horizontal_ratio*g_rotation_range) )
     {
@@ -694,62 +864,6 @@ void DiscernColor::calculateDirection2(const QPoint &pos)
     else
     {
         curPosition = Center;
-    }
-}
-
-/**
- * @brief     将当前识别到的标记框的宽度与记录的宽度作比较，从而设定接下来的动作模式
- * @param     index  第几个目标
- */
-
-void DiscernColor::compareTargetWidth(int index)
-{
-    if (G_Image_Format == "YUV")
-    {
-        if (currentMark.width() > (int)(m_targetList[index].maxWidth*g_arrive_ratio))
-        {
-            if (m_targetList[index].type == 0)
-            {
-                moveMode = Obstacle;
-            }
-            else
-            {
-                moveMode = Wait;
-                m_targetList[index].state = 1;
-            }
-        }
-        else if (currentMark.width() > (int)(m_targetList[index].maxWidth*g_access_ratio))
-        {
-            moveMode = Access;
-        }
-        else
-        {
-            moveMode = Track;
-        }
-    }
-
-    else if (G_Image_Format == "HSV")
-    {
-        if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[index].maxWidth*g_arrive_ratio))
-        {
-            if (m_hsvTargetList[index].type == 0)
-            {
-                moveMode = Obstacle;
-            }
-            else
-            {
-                moveMode = Wait;
-                m_hsvTargetList[index].state = 1;
-            }
-        }
-        else if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[index].maxWidth*g_access_ratio))
-        {
-            moveMode = Access;
-        }
-        else
-        {
-            moveMode = Track;
-        }
     }
 }
 
@@ -789,28 +903,31 @@ int DiscernColor::currentTarget() const
  */
 
 void DiscernColor::findTarget()
-{
-    actionStatus = Doing;
-    isReady = false;
+{    
     switch (curPosition)
     {
     case Center: //前进
+        setActionStatus(QuickWalk);
         emit startMoveOn(m_nMoveOnTimeCount);
         m_findCount = 0;
         break;
     case LeftFar:  //左转(大)
+        setActionStatus(TurnLeft_L);
         emit directionChanged(g_left_l_command);
         m_findCount = 0;
         break;
     case LeftNear: //左转(小)
+        setActionStatus(TurnLeft_S);
         emit directionChanged(g_left_s_command);
         m_findCount = 0;
         break;
     case RightNear: //右转(小)
+        setActionStatus(TurnRight_S);
         emit directionChanged(g_right_s_command);
         m_findCount = 0;
         break;
     case RightFar:  //右转(大)
+        setActionStatus(TurnRight_L);
         emit directionChanged(g_right_l_command);
         m_findCount = 0;
         break;
@@ -818,12 +935,16 @@ void DiscernColor::findTarget()
         m_findCount++;
         if (m_findCount > 3)
         {
+            setActionStatus(TurnLeft_L);
             emit directionChanged(g_left_l_command);
         }
         else
         {
+            setActionStatus(TurnRight_L);
             emit directionChanged(g_right_l_command);
         }
+        if (m_findCount > 1000)
+            m_findCount = 4;
         break;
     default:
         break;
@@ -866,33 +987,36 @@ void DiscernColor::obstacleAvoidance()
         turn = m_hsvTargetList[m_hsvTargetNum].turn;
     }
 
-    actionStatus = Doing;
-    isReady = false;
     obstacleCount++;
     qDebug()<< "----======start obstacle avoidance: " << obstacleCount;
     if (obstacleCount == 1 || obstacleCount == 2) //避障执行的前两次动作，转向
     {
         if(turn == 0) //左边
         {
+            setActionStatus(TurnLeft_L);
             emit directionChanged(g_left_l_command);
         }
         else          //右边
         {
+            setActionStatus(TurnRight_L);
             emit directionChanged(g_right_l_command);
         }
     }
     else if (obstacleCount == 3) //避障执行的第三次动作,前进
     {
+        setActionStatus(QuickWalk);
         emit startMoveOn(g_far_move_on_time);
     }
     else if (obstacleCount == 4 || obstacleCount == 5) //恢复转向
     {
         if(turn == 0)
         {
+            setActionStatus(TurnRight_L);
             emit directionChanged(g_right_l_command);
         }
         else
         {
+            setActionStatus(TurnLeft_L);
             emit directionChanged(g_left_l_command);
         }
 
@@ -911,6 +1035,59 @@ void DiscernColor::obstacleAvoidance()
                 emit sendInfo(QString("Reach.Target=%1").arg(m_hsvTargetList[m_hsvTargetNum].name));
             }
         }
+    }
+}
+
+void DiscernColor::shootFootball()
+{    
+    int actionCount = 0;
+    if (curPosition == RightFar)
+    {
+        setActionStatus(ShootFootBall);
+        emit directionChanged(9);
+        m_bShootFinished = true;
+        moveMode = Track;
+    }
+    else if (curPosition == LeftFar)
+    {
+        actionCount = 4;
+    }
+    else if (curPosition == LeftNear)
+    {
+        actionCount = 3;
+    }
+    else if (curPosition == Center)
+    {
+        actionCount = 2;
+    }
+    else if (curPosition == RightNear)
+    {
+        actionCount = 1;
+    }
+    actionCount += 1;
+    qDebug()<< "----------------=============start shoot !!!"<<actionCount;
+
+    if (m_shootActionCount < actionCount)
+    {
+        if (m_shootActionCount == 0)
+        {
+            setActionStatus(QuickWalk);
+            emit startMoveOn(2000);
+        }
+        else
+        {
+            setActionStatus(LeftShift);
+            emit directionChanged(8);
+        }
+        m_shootActionCount++;
+    }
+    if (m_shootActionCount == actionCount)
+    {
+        setActionStatus(ShootFootBall);
+        emit directionChanged(9);
+        m_bShootFinished = true;
+        moveMode = Track;
+        m_shootActionCount = 0;
     }
 }
 
@@ -1068,33 +1245,3 @@ unsigned char DiscernColor::GetLabel(ColorInfo &info, unsigned char *source, int
 {
    return info.channelLUT[0][source[3*pIndex+1]] & info.channelLUT[1][source[3*pIndex+2]];
 }
-
-//void DiscernColor::findFootBall()
-//{
-//    Mat midImage, dstImage;//临时变量和目标图的定义
-
-//    //【3】转为灰度图，进行图像平滑
-//    cvtColor(srcImage, midImage, CV_BGR2GRAY);//转化边缘检测后的图为灰度图
-//    GaussianBlur(midImage, midImage, Size(9, 9), 2, 2); //高斯模糊算法
-
-//    //【4】进行霍夫圆变换
-//    vector<Vec3f> circles;//保存矢量
-////    HoughCircles(midImage, circles, CV_HOUGH_GRADIENT, 1.5, 10, 200, 100, 0, 0);
-//    HoughCircles(midImage, circles, CV_HOUGH_GRADIENT, 1, 50, 100, 60, 0, 0);
-
-//    //【5】依次在图中绘制出圆
-//    qDebug()<< "circles.size(): "<<circles.size();
-//    for (size_t i = 0; i < circles.size(); i++)
-//    {
-//        Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-//        int radius = cvRound(circles[i][2]);
-//        //绘制圆心
-//        circle(srcImage, center, 3, Scalar(0, 255, 0), -1, 8, 0);
-//        //绘制圆轮廓
-//        circle(srcImage, center, radius, Scalar(155, 50, 255), 3, 8, 0);
-//        //Scalar(55,100,195)参数中G、B、R颜色值的数值，得到想要的颜色
-//    }
-//    displayImage(srcImage, 1);
-
-
-//}

@@ -71,20 +71,13 @@ private slots:
     void on_transform_radio_toggled(bool checked); //显示转换后的图
     void on_yuv_radio_toggled(bool checked);  //选中YUV格式
     void on_hsv_radio_toggled(bool checked);  //选中HSV格式
+    void on_goback_checkBox_clicked(bool checked);  //设置机器人完成所有目标后返回到第一个目标
     void on_football_checkBox_clicked(bool checked);  //识别足球
 
     //亮度，对比度，Y值, HSV值滚动条
-    void on_colorY_slider_valueChanged(int value);
-    void on_brightness_slider_valueChanged(int value);
-    void on_contrast_slider_valueChanged(int value);
-    void on_colorMinH_slider_valueChanged(int value);
-    void on_colorMinS_slider_valueChanged(int value);
-    void on_colorMinV_slider_valueChanged(int value);
-    void on_colorMaxH_slider_valueChanged(int value);
-    void on_colorMaxS_slider_valueChanged(int value);
-    void on_colorMaxV_slider_valueChanged(int value);
+    void onSliderValueChanged(int value);
 
-    void onSliderTimeout();
+    void on_shooot_checkBox_clicked(bool checked);
 
 protected:
     virtual void resizeEvent(QResizeEvent *e) Q_DECL_OVERRIDE;
@@ -104,6 +97,8 @@ private:
 
     QList<QPushButton*> btnList;
     QButtonGroup *action_btn_group;
+
+    QList<QSlider*> qsliderList;
 
     PortSetupDialog *portSetupDialog;
     ScanIpDiaog *scanIpDialog;
@@ -132,7 +127,6 @@ private:
 
     void readConfigFile();
     void saveConfigFile();
-    void startSliderTimer();
 };
 
 #endif // VIDEOAREA_H

@@ -32,7 +32,8 @@ VideoArea::VideoArea(QWidget *parent) :
     action_btn_group = new QButtonGroup(this);
     btnList << ui->action_btn_1 << ui->action_btn_2 << ui->action_btn_3
             << ui->action_btn_4 << ui->action_btn_5 << ui->action_btn_6
-            << ui->action_btn_7 << ui->action_btn_8;
+            << ui->action_btn_7 << ui->action_btn_8 << ui->action_btn_9
+            << ui->action_btn_MoveOn << ui->action_btn_MoveStop;
 
     for(int i=0; i<btnList.size(); i++)
     {
@@ -74,6 +75,24 @@ VideoArea::VideoArea(QWidget *parent) :
     connectionBox = new ConnectionBox(this);
     connect(connectionBox, SIGNAL(startConnectTo(QString)), this, SLOT(onStartConnectTo(QString)));
 
+    ui->brightness_slider->setProperty("name", "Brightness");
+    ui->contrast_slider->setProperty("name", "Contrast");
+    ui->colorY_slider->setProperty("name", "YUV_Y");
+    ui->colorMinH_slider->setProperty("name", "MinH");
+    ui->colorMinS_slider->setProperty("name", "MinS");
+    ui->colorMinV_slider->setProperty("name", "MinV");
+    ui->colorMaxH_slider->setProperty("name", "MaxH");
+    ui->colorMaxS_slider->setProperty("name", "MaxS");
+    ui->colorMaxV_slider->setProperty("name", "MaxV");
+
+    qsliderList << ui->brightness_slider << ui->contrast_slider << ui->colorY_slider
+                << ui->colorMinH_slider << ui->colorMinS_slider << ui->colorMinV_slider
+                << ui->colorMaxH_slider << ui->colorMaxS_slider << ui->colorMaxV_slider;
+
+    foreach (QSlider *obj, qsliderList) {
+        connect(obj, SIGNAL(valueChanged(int)), this, SLOT(onSliderValueChanged(int)));
+    }
+
     parameterSettingDialog = new ParameterSettingDialog(this);
     parameterSettingDialog->hide();
     connect(parameterSettingDialog, SIGNAL(sendData(QByteArray)), this, SLOT(WriteData(QByteArray)));
@@ -86,9 +105,6 @@ VideoArea::VideoArea(QWidget *parent) :
     m_timer = new QTimer(this);
     connect(m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
     m_frame_count = 0;
-
-    m_sliderTimer = new QTimer(this);
-    connect(m_sliderTimer, SIGNAL(timeout()), this, SLOT(onSliderTimeout()));
 
     QNetworkProxyFactory::setUseSystemConfiguration(false);
     m_long_socket = new QTcpSocket(this);
@@ -113,6 +129,8 @@ VideoArea::VideoArea(QWidget *parent) :
 
 VideoArea::~VideoArea()
 {
+    if (m_long_socket->isOpen())
+        m_long_socket->abort();
     delete ui;
 }
 
@@ -122,6 +140,7 @@ VideoArea::~VideoArea()
 
 void VideoArea::WriteData(const QByteArray &msg)
 {
+    QThread::msleep(10);
     if (msg.isEmpty())
         return;
 
@@ -716,15 +735,15 @@ void VideoArea::on_manual_radio_clicked(bool checked)
 void VideoArea::onActionButtonGroupClicked(int btnID)
 {
     QString cmd;
-    if (btnID < 7)
+    if (btnID < 10)
     {
-       cmd = QString("Move,%1").arg(btnID);
+        cmd = QString("Move,%1").arg(btnID);
     }
-    else if (btnID == 7)
+    else if (btnID == 10)
     {
         cmd = "Move,on";
     }
-    else if (btnID == 8)
+    else if (btnID == 11)
     {
         cmd = "Move,stop";
     }
@@ -765,28 +784,6 @@ void VideoArea::resizeEvent(QResizeEvent *e)
     test_label->setGeometry(ui->video_label->geometry());
     mark_label->setGeometry(ui->video_label->geometry());
     QMainWindow::resizeEvent(e);
-}
-
-/**
- * @brief    当滑块的值变化的时候，通过定时器发送指令
- */
-
-void VideoArea::startSliderTimer()
-{
-    if (!m_sliderTimer->isActive())
-    {
-        m_sliderTimer->start(200);
-    }
-}
-
-/**
- * @brief    定时器超时，发送指令
- */
-
-void VideoArea::onSliderTimeout()
-{
-    WriteData(m_command.toUtf8());
-    m_sliderTimer->stop();
 }
 
 /**
@@ -857,86 +854,57 @@ void VideoArea::on_hsv_radio_toggled(bool checked)
     }
 }
 
-/**
- * @brief    拖动Y滑块，设置Y值，YUV格式中的Y，也就是亮度，这个是把
- *           图片的每个像素的Y通道(亮度)都改为一个统一的值
- * @note     只更改YUV格式中的Y通道，并且强制统一为一个值
- * @param    value 亮度
- */
-
-void VideoArea::on_colorY_slider_valueChanged(int value)
+void VideoArea::onSliderValueChanged(int value)
 {
-    ui->colorY_label->setText(QString("Y: %1").arg(value));
-    m_command = QString("set Color.Channel.Y=%1").arg(value);
-    startSliderTimer();
-}
-
-/**
- * @brief    拖动Brightness滑块，设置亮度，这个和Y滑块不一样，这个是
- *           整体改变亮度，比如RGB格式下，把R,G,B 3个通道都改变
- * @param    value 亮度
- */
-
-void VideoArea::on_brightness_slider_valueChanged(int value)
-{
-    double brightness = value/100.0;
-    ui->brightness_label->setText(QString("Brightness: %1").arg(brightness));
-    m_command = QString("set Color.Brightness=%1").arg(brightness);
-    startSliderTimer();
-}
-
-/**
- * @brief    拖动Contrast滑块，设置对比度，配合Brightness使用
- * @param    value 对比度
- */
-
-void VideoArea::on_contrast_slider_valueChanged(int value)
-{
-    ui->contrast_label->setText(QString("Contrast: %1").arg(value));
-    m_command = QString("set Color.Contrast=%1").arg(value);
-    startSliderTimer();
-}
-
-void VideoArea::on_colorMinH_slider_valueChanged(int value)
-{
-    ui->colorMinH_label->setText(QString("MinH: %1").arg(value));
-    m_command = QString("set HSV.Channel.MinH=%1").arg(value);
-    startSliderTimer();
-}
-
-void VideoArea::on_colorMinS_slider_valueChanged(int value)
-{
-    ui->colorMinS_label->setText(QString("MinS: %1").arg(value));
-    m_command = QString("set HSV.Channel.MinS=%1").arg(value);
-    startSliderTimer();
-}
-
-void VideoArea::on_colorMinV_slider_valueChanged(int value)
-{
-    ui->colorMinV_label->setText(QString("MinV: %1").arg(value));
-    m_command = QString("set HSV.Channel.MinV=%1").arg(value);
-    startSliderTimer();
-}
-
-void VideoArea::on_colorMaxH_slider_valueChanged(int value)
-{
-    ui->colorMaxH_label->setText(QString("MaxH: %1").arg(value));
-    m_command = QString("set HSV.Channel.MaxH=%1").arg(value);
-    startSliderTimer();
-}
-
-void VideoArea::on_colorMaxS_slider_valueChanged(int value)
-{
-    ui->colorMaxS_label->setText(QString("MaxS: %1").arg(value));
-    m_command = QString("set HSV.Channel.MaxS=%1").arg(value);
-    startSliderTimer();
-}
-
-void VideoArea::on_colorMaxV_slider_valueChanged(int value)
-{
-    ui->colorMaxV_label->setText(QString("MaxV: %1").arg(value));
-    m_command = QString("set HSV.Channel.MaxV=%1").arg(value);
-    startSliderTimer();
+    QSlider *obj = qobject_cast<QSlider*>(sender());
+    QString name = obj->property("name").toString();
+    if (name == "Brightness")
+    {
+        double brightness = value/100.0;
+        ui->brightness_label->setText(QString("Brightness: %1").arg(brightness));
+        m_command = QString("set Color.Brightness=%1").arg(brightness);
+    }
+    else if (name == "Contrast")
+    {
+        ui->contrast_label->setText(QString("Contrast: %1").arg(value));
+        m_command = QString("set Color.Contrast=%1").arg(value);
+    }
+    else if (name == "YUV_Y")
+    {
+        ui->colorY_label->setText(QString("Y: %1").arg(value));
+        m_command = QString("set Color.Channel.Y=%1").arg(value);
+    }
+    else if (name == "MinH")
+    {
+        ui->colorMinH_label->setText(QString("MinH: %1").arg(value));
+        m_command = QString("set HSV.Channel.MinH=%1").arg(value);
+    }
+    else if (name == "MinS")
+    {
+        ui->colorMinS_label->setText(QString("MinS: %1").arg(value));
+        m_command = QString("set HSV.Channel.MinS=%1").arg(value);
+    }
+    else if (name == "MinV")
+    {
+        ui->colorMinV_label->setText(QString("MinV: %1").arg(value));
+        m_command = QString("set HSV.Channel.MinV=%1").arg(value);
+    }
+    else if (name == "MaxH")
+    {
+        ui->colorMaxH_label->setText(QString("MaxH: %1").arg(value));
+        m_command = QString("set HSV.Channel.MaxH=%1").arg(value);
+    }
+    else if (name == "MaxS")
+    {
+        ui->colorMaxS_label->setText(QString("MaxS: %1").arg(value));
+        m_command = QString("set HSV.Channel.MaxS=%1").arg(value);
+    }
+    else if (name == "MaxV")
+    {
+        ui->colorMaxV_label->setText(QString("MaxV: %1").arg(value));
+        m_command = QString("set HSV.Channel.MaxV=%1").arg(value);
+    }
+    WriteData(m_command.toUtf8());
 }
 
 void VideoArea::addInfomation(const QString &msg)
@@ -954,6 +922,34 @@ void VideoArea::on_football_checkBox_clicked(bool checked)
     else
     {
         msg.append("set Object.Type=Null");
+    }
+    WriteData(msg.toUtf8());
+}
+
+void VideoArea::on_goback_checkBox_clicked(bool checked)
+{
+    QString msg;
+    if (checked)
+    {
+        msg = "set Robot.Go.Back=1";
+    }
+    else
+    {
+        msg = "set Robot.Go.Back=0";
+    }
+    WriteData(msg.toUtf8());
+}
+
+void VideoArea::on_shooot_checkBox_clicked(bool checked)
+{
+    QString msg;
+    if (checked)
+    {
+        msg = QString("set Robot.Shoot=1,%1").arg(ui->football_radius_edit->text());
+    }
+    else
+    {
+        msg = QString("set Robot.Shoot=0,%1").arg(ui->football_radius_edit->text());
     }
     WriteData(msg.toUtf8());
 }
