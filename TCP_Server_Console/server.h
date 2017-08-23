@@ -52,7 +52,6 @@ private slots:
     void disPlayError(QAbstractSocket::SocketError);
     void onDirectionChanged(int val);
     void onActionFinished();
-    void readyNextAction();
     void onTimeout();
     void onSendInfo(const QString &msg);
     void onStartMoveOn(int msec);

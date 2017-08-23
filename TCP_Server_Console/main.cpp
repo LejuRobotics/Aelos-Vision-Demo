@@ -17,10 +17,12 @@ double g_object_ratio = 0.6;
 double g_rotation_range = 0.25;
 int g_time_count = 1500;
 int g_forward_command = 1;
+int g_quick_back_command = 2;
 int g_left_s_command = 3;
 int g_right_s_command = 4;
 int g_left_l_command = 5;
 int g_right_l_command = 6;
+int g_stoop_down_command = 7;
 int g_ping_router_count = 8;
 QString g_robot_number = "AELOS150C00D";
 int g_far_move_on_time = 3500;
@@ -32,6 +34,9 @@ int g_log_file_switch = 0;
 QString G_Image_Display = "Original";
 QString G_Image_Format = "HSV";
 QString G_Object_Type = "Null";
+int G_Go_Back_Flag = 0;
+int G_Shoot_Flag = 0;
+int G_Football_Radius = 0;
 
 const qint64 LOG_FILE_MAX_SIZE = 5*1024*1024;  //日志文件大小的最大值
 
@@ -109,10 +114,12 @@ void readConfigFile()
     g_rotation_range = iniReader.value("Debug/rotationRange").toDouble();
     g_time_count = iniReader.value("Debug/timeCount").toInt();
     g_forward_command = iniReader.value("Debug/forwardCommand").toInt();
+    g_quick_back_command = iniReader.value("Debug/quickBackCommand").toInt();
     g_left_s_command = iniReader.value("Debug/sLeftCommand").toInt();
     g_right_s_command = iniReader.value("Debug/sRightCommand").toInt();
     g_left_l_command = iniReader.value("Debug/lLeftCommand").toInt();
     g_right_l_command = iniReader.value("Debug/lRightCommand").toInt();
+    g_stoop_down_command = iniReader.value("Debug/stoopDownCommand").toInt();
     g_ping_router_count = iniReader.value("Debug/pingRouterCount").toInt();
     g_robot_number = iniReader.value("Robot/No").toString();
     g_far_move_on_time = iniReader.value("Debug/moveOnFarTime").toInt();
@@ -132,10 +139,12 @@ void readConfigFile()
             << "g_rotation_range: " << g_rotation_range << "\n"
             << "g_time_count: " << g_time_count << "\n"
             << "g_forward_command: " << g_forward_command << "\n"
+            << "g_quick_back_command: " << g_quick_back_command << "\n"
             << "g_left_s_command: " << g_left_s_command << "\n"
             << "g_right_s_command: " << g_right_s_command << "\n"
             << "g_left_l_command: " << g_left_l_command << "\n"
             << "g_right_l_command: " << g_right_l_command << "\n"
+            << "g_stoop_down_command: " << g_stoop_down_command << "\n"
             << "g_ping_router_count: " << g_ping_router_count << "\n"
             << "g_robot_number: " << g_robot_number << "\n"
             << "g_far_move_on_time: " << g_far_move_on_time << "\n"

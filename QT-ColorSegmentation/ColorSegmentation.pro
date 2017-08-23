@@ -22,7 +22,8 @@ SOURCES += main.cpp\
     Public/ServerWifiSettings.cpp \
     Public/ConnectionBox.cpp \
     Public/LejuTbableWidget.cpp \
-    Public/ParameterSettingDialog.cpp
+    Public/ParameterSettingDialog.cpp \
+    Public/LejuSlider.cpp
 
 HEADERS += VideoArea.h\
     Public/painterlabel.h\
@@ -33,7 +34,8 @@ HEADERS += VideoArea.h\
     Public/ServerWifiSettings.h \
     Public/ConnectionBox.h \
     Public/LejuTbableWidget.h \
-    Public/ParameterSettingDialog.h
+    Public/ParameterSettingDialog.h \
+    Public/LejuSlider.h
 
 FORMS    +=  VideoArea.ui\
     Public/ScanIpDiaog.ui \

@@ -488,6 +488,21 @@ bool Server::parseData(const QString &msg)
             return true;
         }
     }
+    else if (msg.startsWith("set Robot.Go.Back"))
+    {
+        G_Go_Back_Flag = msg.mid(msg.indexOf("=")+1).toInt();
+        return true;
+    }
+    else if (msg.startsWith("set Robot.Shoot"))
+    {
+        QStringList valList = msg.mid(msg.indexOf("=")+1).split(",");
+        if (valList.length() == 2)
+        {
+            G_Shoot_Flag = valList[0].toInt();
+            G_Football_Radius = valList[1].toInt();
+            return true;
+        }
+    }
 
     return false;
 }
@@ -541,17 +556,6 @@ void Server::onDirectionChanged(int val)
 void Server::onActionFinished()
 {   
     discernColor->setActionStatus(DiscernColor::Finished);
-    QTimer::singleShot(g_time_count, this, SLOT(readyNextAction()));
-}
-
-
-/**
- * @brief     定时器超时，机器人可以进行下一次动作
- */
-
-void Server::readyNextAction()
-{
-    discernColor->setActionReady();
 }
 
 /**

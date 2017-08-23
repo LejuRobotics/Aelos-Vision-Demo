@@ -52,7 +52,19 @@ public:
      * @brief 机器人动作状态
      */
 
-    enum ActionStatus { Initial, Doing, Finished };
+    enum ActionStatus {
+        Finished,      /**< 初始状态和动作完成以后的状态 */
+        QuickWalk,     /**< 持续快走 */
+        QuickBack,     /**< 快退 */
+        TurnLeft_S,    /**< 小幅度左转 */
+        TurnRight_S,   /**< 小幅度右转 */
+        TurnLeft_L,    /**< 大幅度左转 */
+        TurnRight_L,   /**< 大幅度右转 */
+        StoopDown,     /**< 弯腰 */
+        LeftShift,     /**< 左移 */
+        RightShift,    /**< 右移 */
+        ShootFootBall  /**< 射门 */
+    };
 
     /**
      * @brief 动作模式
@@ -62,7 +74,8 @@ public:
         Track,       /**< 快速靠近模式 */
         Access,      /**< 慢慢靠近模式 */
         Obstacle,    /**< 避障模式 */       
-        Wait         /**< 等待模式 */
+        Wait,        /**< 等待模式 */
+        Shoot        /**< 射门模式 */
     };
 
     /**
@@ -88,18 +101,24 @@ public:
         unsigned char channelRange[32][2][2];
     };
 
+    /**
+     * @brief YUV目标
+     */
     struct Target {
         QString name;           /**< 目标名称 */
-        int type;               /**< 目标类型，0障碍物，1目标 */
+        int type;               /**< 目标类型，0障碍物，1目标, 2足球*/
         int maxWidth;           /**< 在停止靠近目标的位置识别到的标记框宽度 */
         int turn;               /**< 避障转动方向，0左边，1右边 */
         ColorInfo colorInfo;    /**< 目标的颜色信息 */
         int state;              /**< 状态，0未完成，1已完成 */
     };
 
+    /**
+     * @brief HSV目标
+     */
     struct HSV_Target {
         QString name;           /**< 目标名称 */
-        int type;               /**< 目标类型，0障碍物，1目标 */
+        int type;               /**< 目标类型，0障碍物，1目标, 2足球*/
         int maxWidth;           /**< 在停止靠近目标的位置识别到的标记框宽度 */
         int turn;               /**< 避障转动方向，0左边，1右边 */
         Scalar hsvLower;        /**< hsv识别颜色inrange函数中的颜色范围下界 */
@@ -115,13 +134,13 @@ public:
     bool removeTarget(int index);
     void setActionMode(int mode);
     void setActionStatus(ActionStatus status);
-    void setActionReady();
     void setColorChannelY(int val);
 
     void startAddHsvTarget();
 
 public slots:
     void readFrame(QImage &image);
+    void setActionReady();
 
 protected:
     virtual void run();
@@ -132,15 +151,17 @@ signals:
     void startMoveOn(int msec);
 
 private:
-    void findColorFromYUV(Mat &frame);
-    void findColorFaromHSV(Mat &frame);
+    void manualOperation();
+    void autoOperation();
 
-    void findContoursFromHSV(Mat &frame, int type);
+    void autoForYUV();
+    void autoForHSV();
+    void autoForFootball();
+
+    void trackFootball(const QPoint &center, int &radius);
 
     bool getCurrentMark(const vector<Object*> &objList);
-    void calculateDirection();
-    void calculateDirection2(const QPoint &pos);
-    void compareTargetWidth(int index);
+    void calculateDirection(const QPoint &pos);
     int  currentTarget() const;
 
     void findTarget();
@@ -148,6 +169,7 @@ private:
     void trackingTarget();
     void accessTarget();
     void obstacleAvoidance();
+    void shootFootball();
 
     void addColor(Mat &frame);
     void segment(Mat &frame, ColorInfo &info, bool mask);
@@ -158,6 +180,7 @@ private:
     QMutex m_mutex;                 /**< 读取图片的锁 */
     QQueue<QImage> m_image_queue;   /**< 保存每一帧图片的队列 */
     QImage m_image;
+    Mat m_frame;
 
     bool m_selected;
     QRect m_select_rect;
@@ -169,6 +192,7 @@ private:
     bool isReady;                  /**< 是否做好动作准备 */
 
     ActionStatus actionStatus;     /**< 记录当前机器人动作状态 */
+    ActionStatus lastActionStatus;  /**< 记录上一次机器人动作状态 */
 
     MoveMode moveMode;
 
@@ -184,16 +208,18 @@ private:
     int w;
     int h;
 
-    QList<Target> m_targetList;        /**< 记录目标的容器 */
+    QList<Target> m_targetList;        /**< 记录YUV目标的容器 */
 
-    bool m_bIsHsvSelected;
     Mat hsv_mat;
     bool m_bAddHsvFlag;
     Rect m_hsvCurrentMark;
     int m_hsvTargetNum;
-    QList<HSV_Target> m_hsvTargetList;
+    QList<HSV_Target> m_hsvTargetList;  /**< 记录HSV目标的容器 */
 
-    vector<vector<Point> > contours;
+    bool m_bShootFinished;
+    int m_shootActionCount;
+
+    vector<Vec3f> m_footballContours;
 
 };
 
