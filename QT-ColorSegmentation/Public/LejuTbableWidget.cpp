@@ -47,6 +47,7 @@ void LejuTbableWidget::addItem(const QString &pTime, const QString &pColor, int 
     combox->setProperty("row", rowCount()-1);
     combox->addItem(tr("障碍物"));
     combox->addItem(tr("目标"));
+    combox->addItem(tr("足球"));
     connect(combox, SIGNAL(currentIndexChanged(int)), this, SLOT(onTypeChanged(int)));
 
     QComboBox *combox_2 = new QComboBox(this);

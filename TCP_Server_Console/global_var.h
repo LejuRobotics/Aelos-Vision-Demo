@@ -73,9 +73,6 @@ extern int g_log_file_switch;             /**< 是否保存程序打印日志，
  *************************************************************/
 extern QString G_Image_Display;           /**< 图片显示类型 */
 extern QString G_Image_Format;            /**< 识别颜色的图片格式 */
-extern QString G_Object_Type;             /**< 物体类型 */
 extern int G_Go_Back_Flag;                /**< 完成所有目标后返回到初始目标的标志 0否，1是*/
-extern int G_Shoot_Flag;                  /**< 是否让机器人寻找足球并进行射门动作 0否，1是*/
-extern int G_Football_Radius;             /**< 可以进行射门位置的足球半径 */
 
 #endif // GLOBAL_VAR_H

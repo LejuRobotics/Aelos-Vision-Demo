@@ -35,8 +35,9 @@ DiscernColor::DiscernColor(QObject *parent) : QThread(parent)
     m_findCount = 0;
     m_nMoveOnTimeCount = 3000;
     m_bAddHsvFlag = false;
-    m_bShootFinished = false;
-    m_shootActionCount = 0;
+    m_targetType = 0;
+    m_shootActionsTotalCount = 0;
+    m_m_shootActionsFinishedCount = 0;
 
     g_hsv_lower[0] = 0;
     g_hsv_lower[1] = 100;
@@ -74,8 +75,6 @@ void DiscernColor::Reset()
     curPosition = Unknown;        
     moveMode = Track;
     obstacleCount = 0;
-    m_shootActionCount = 0;
-    m_bShootFinished = false;
     m_targetList.clear();
     m_hsvTargetList.clear();
 }
@@ -432,75 +431,79 @@ void DiscernColor::autoForYUV()
     targetNumber = currentTarget();
     if (targetNumber != -1)
     {
-        QString msg("@Begin:\r\n");
-        if (actionStatus != Finished || !isReady || moveMode == Wait)
+        m_targetType = m_targetList[targetNumber].type;
+        if (m_targetType == 0 || m_targetType == 1)
         {
-            return;
-        }
-
-        segment(m_frame, m_targetList[targetNumber].colorInfo, 1);
-        if (getCurrentMark(objList)) //当识别到物体位置
-        {
-            msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
-                       .arg(currentMark.x())
-                       .arg(currentMark.y())
-                       .arg(currentMark.width())
-                       .arg(currentMark.height()));
-
-            if (moveMode != Obstacle)
+            if (actionStatus != Finished || !isReady || moveMode == Wait)
             {
-                if (currentMark.width() > (int)(m_targetList[targetNumber].maxWidth*g_arrive_ratio))
+                return;
+            }
+
+            segment(m_frame, m_targetList[targetNumber].colorInfo, 1);
+            QString msg("@Begin:\r\n");
+            if (getCurrentMark(objList)) //当识别到物体位置
+            {
+                msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
+                           .arg(currentMark.x())
+                           .arg(currentMark.y())
+                           .arg(currentMark.width())
+                           .arg(currentMark.height()));
+
+                if (moveMode != Obstacle)
                 {
-                    if (m_targetList[targetNumber].type == 0)
+                    if (currentMark.width() > (int)(m_targetList[targetNumber].maxWidth*g_arrive_ratio))
                     {
-                        moveMode = Obstacle;
+                        if (m_targetList[targetNumber].type == 0)
+                        {
+                            moveMode = Obstacle;
+                        }
+                        else
+                        {
+                            moveMode = Wait;
+                            m_targetList[targetNumber].state = 1;
+                        }
+                    }
+                    else if (currentMark.width() > (int)(m_targetList[targetNumber].maxWidth*g_access_ratio))
+                    {
+                        moveMode = Access;
                     }
                     else
                     {
-                        moveMode = Wait;
-                        m_targetList[targetNumber].state = 1;
+                        moveMode = Track;
                     }
-                }
-                else if (currentMark.width() > (int)(m_targetList[targetNumber].maxWidth*g_access_ratio))
-                {
-                    moveMode = Access;
-                }
-                else
-                {
-                    moveMode = Track;
-                }
 
+                }
+                calculateDirection(currentCenterPoint);
             }
-            calculateDirection(currentCenterPoint);
-        }
-        else //没有识别到物体位置
-        {
-            curPosition = Unknown;
-            msg.append("Unrecognized color\r\n");
-        }
-        msg.append("@End\r\n");
-        emit sendInfo(msg);  //发送结果给客户端
+            else //没有识别到物体位置
+            {
+                curPosition = Unknown;
+                msg.append("Unrecognized color\r\n");
+            }
+            msg.append("@End\r\n");
+            emit sendInfo(msg);  //发送结果给客户端
 
-        if (moveMode == Track)
-        {
-            trackingTarget();
+            if (moveMode == Track)
+            {
+                trackingTarget();
+            }
+            else if (moveMode == Access)
+            {
+                accessTarget();
+            }
+            else if (moveMode == Obstacle)
+            {
+                obstacleAvoidance();
+            }
+            else if (moveMode == Wait)
+            {
+                emit sendInfo(QString("Reach.Target=%1").arg(m_targetList[targetNumber].name));
+            }
         }
-        else if (moveMode == Access)
+        else if (m_targetType == 2)
         {
-            accessTarget();
-        }
-        else if (moveMode == Obstacle)
-        {
-            obstacleAvoidance();
-        }
-        else if (moveMode == Wait)
-        {
-            emit sendInfo(QString("Reach.Target=%1").arg(m_targetList[targetNumber].name));
-        }
-    }
-    else
-    {
 
+        }
     }
 }
 
@@ -509,11 +512,169 @@ void DiscernColor::autoForHSV()
     m_hsvTargetNum = currentTarget();
     if (m_hsvTargetNum != -1)
     {
-        if (actionStatus != Finished || !isReady || moveMode == Wait)
+        m_targetType = m_hsvTargetList[m_hsvTargetNum].type;
+        if (m_targetType == 0 || m_targetType == 1) //障碍物或者目标
         {
-            return;
-        }
+            if (actionStatus != Finished || !isReady || moveMode == Wait)
+            {
+                return;
+            }
 
+            if (moveMode == Obstacle)
+            {
+                obstacleAvoidance();
+                return;
+            }
+
+            derectOfHSV();
+        }
+        else if (m_targetType == 2) //足球
+        {
+            if (moveMode == Shoot && actionStatus == Finished && isReady) //开始执行射门动作
+            {
+                shootFootball();
+                return;
+            }
+
+            if (lastActionStatus == StoopDown)  //弯腰识别足球
+            {
+                recordStoopDownOfHSV();
+            }
+            else
+            {
+                if (actionStatus != Finished || !isReady || moveMode == Wait)
+                    return;
+
+                derectOfHSV();
+            }
+        }
+    }
+}
+
+void DiscernColor::derectOfHSV()
+{
+    g_hsv_lower = m_hsvTargetList[m_hsvTargetNum].hsvLower;
+    g_hsv_upper = m_hsvTargetList[m_hsvTargetNum].hsvUpper;
+
+    //转到HSV空间
+    cvtColor(m_frame,hsv_mat,COLOR_RGB2HSV);
+
+    //根据阈值构建掩膜
+    inRange(hsv_mat, m_hsvTargetList[m_hsvTargetNum].hsvLower, m_hsvTargetList[m_hsvTargetNum].hsvUpper, hsv_mat);
+
+    cv::Mat str_el = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(g_nStructElementSize, g_nStructElementSize));
+
+    //腐蚀操作
+    erode(hsv_mat, hsv_mat, str_el);
+    //膨胀操作，其实先腐蚀再膨胀的效果是开运算，去除噪点
+    dilate(hsv_mat, hsv_mat, str_el);
+
+    //轮廓检测
+    vector<vector<Point> > contours;
+    findContours(hsv_mat, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    vector<Moments>mu(contours.size());
+    vector<Point2f>mc(contours.size());
+    vector<double> areaVec;
+    for (size_t i=0; i<contours.size(); ++i)
+    {
+        //计算轮廓的面积
+        double tmparea = fabs(contourArea(contours[i]));
+        areaVec.push_back(tmparea);
+
+        //计算重心
+        mu[i] = moments(contours[i], false);
+        mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+    }
+
+    int max_pos = (int)(max_element(areaVec.begin(), areaVec.end()) - areaVec.begin());
+
+    QString msg("@Begin HSV:\r\n");
+    if (max_pos < (int)contours.size())
+    {
+        m_hsvCurrentMark = boundingRect(contours[max_pos]);
+        msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
+                   .arg(m_hsvCurrentMark.x)
+                   .arg(m_hsvCurrentMark.y)
+                   .arg(m_hsvCurrentMark.width)
+                   .arg(m_hsvCurrentMark.height));
+
+        QPoint pos(mc[max_pos].x, mc[max_pos].y);
+        calculateDirection(pos);
+
+        if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[m_hsvTargetNum].maxWidth*g_arrive_ratio))
+        {
+            if (m_targetType == 0)
+            {
+                moveMode = Obstacle;
+            }
+            else if (m_targetType == 1)
+            {
+                moveMode = Wait;
+                m_hsvTargetList[m_hsvTargetNum].state = 1;
+            }
+            else if (m_targetType == 2)
+            {
+                moveMode = Shoot;
+
+                if (curPosition == RightFar)
+                {
+                    m_shootActionsTotalCount = 0;
+                }
+                else if (curPosition == RightNear)
+                {
+                    m_shootActionsTotalCount = 1;
+                }
+                else if (curPosition == Center)
+                {
+                    m_shootActionsTotalCount = 2;
+                }
+                else if (curPosition == LeftNear)
+                {
+                    m_shootActionsTotalCount = 3;
+                }
+                else if (curPosition == LeftFar)
+                {
+                    m_shootActionsTotalCount = 4;
+                }
+                m_shootActionsTotalCount += 1;
+            }
+        }
+        else if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[m_hsvTargetNum].maxWidth*g_access_ratio))
+        {
+            moveMode = Access;
+        }
+        else
+        {
+            moveMode = Track;
+        }
+    }
+    else
+    {
+        curPosition = Unknown;
+        msg.append("Unrecognized color\r\n");
+    }
+    msg.append("@End\r\n");
+    emit sendInfo(msg);  //发送结果给客户端
+
+    if (moveMode == Track)
+    {
+        trackingTarget();
+    }
+    else if (moveMode == Access)
+    {
+        accessTarget();
+    }
+    else if (moveMode == Wait)
+    {
+        emit sendInfo(QString("Reach.Target=%1").arg(m_hsvTargetList[m_hsvTargetNum].name));
+    }
+
+}
+
+void DiscernColor::recordStoopDownOfHSV()
+{
+    if (actionStatus != Finished || !isReady) //正在做弯腰动作,需要记录弯腰过程中识别到的目标位置
+    {
         g_hsv_lower = m_hsvTargetList[m_hsvTargetNum].hsvLower;
         g_hsv_upper = m_hsvTargetList[m_hsvTargetNum].hsvUpper;
 
@@ -548,48 +709,93 @@ void DiscernColor::autoForHSV()
         }
 
         int max_pos = (int)(max_element(areaVec.begin(), areaVec.end()) - areaVec.begin());
-
-        QString msg("@Begin HSV:\r\n");
         if (max_pos < (int)contours.size())
         {
+            m_hsvAreaList.append(areaVec[max_pos]);
             m_hsvCurrentMark = boundingRect(contours[max_pos]);
+            m_hsvRectList.append(m_hsvCurrentMark);
+            QPoint pos(mc[max_pos].x, mc[max_pos].y);
+            m_hsvCenterList.append(pos);
+        }
+    }
+    else if (actionStatus == Finished && isReady)  //弯腰动作完成
+    {
+        QString msg("@Begin HSV:\r\n");
+        if (!m_hsvAreaList.isEmpty() && !m_hsvRectList.isEmpty() && !m_hsvCenterList.isEmpty())
+        {
+            QList<int> tempList = m_hsvAreaList;
+            //从小到大排序
+            std::sort(m_hsvAreaList.begin(), m_hsvAreaList.end());
+            //选择中值
+            int p = 0;
+            if (m_hsvAreaList.size()%2)
+            {
+                p = m_hsvAreaList.size()/2;
+            }
+            else
+            {
+                p = (m_hsvAreaList.size()+1)/2;
+            }
+            int index = tempList.indexOf(m_hsvAreaList[p]);
+//            qDebug()<< "p: "<< p << "\n"
+//                    << "index: " << index << "\n"
+//                    << "tempList: "<< tempList << "\n"
+//                    << "m_hsvAreaList: " << m_hsvAreaList;
+
+            m_hsvCurrentMark = m_hsvRectList[index];
             msg.append(QString("Mark.Rect=%1,%2,%3,%4\r\n")
                        .arg(m_hsvCurrentMark.x)
                        .arg(m_hsvCurrentMark.y)
                        .arg(m_hsvCurrentMark.width)
                        .arg(m_hsvCurrentMark.height));
 
-            if (moveMode != Obstacle)
+            calculateDirection(m_hsvCenterList[index]);
+
+            if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[m_hsvTargetNum].maxWidth*g_arrive_ratio))
             {
-                if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[m_hsvTargetNum].maxWidth*g_arrive_ratio))
+                moveMode = Shoot;
+
+                if (curPosition == RightFar)
                 {
-                    if (m_hsvTargetList[m_hsvTargetNum].type == 0)
-                    {
-                        moveMode = Obstacle;
-                    }
-                    else
-                    {
-                        moveMode = Wait;
-                        m_hsvTargetList[m_hsvTargetNum].state = 1;
-                    }
+                    m_shootActionsTotalCount = 0;
                 }
-                else if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[m_hsvTargetNum].maxWidth*g_access_ratio))
+                else if (curPosition == RightNear)
                 {
-                    moveMode = Access;
+                    m_shootActionsTotalCount = 1;
                 }
-                else
+                else if (curPosition == Center)
                 {
-                    moveMode = Track;
+                    m_shootActionsTotalCount = 2;
                 }
+                else if (curPosition == LeftNear)
+                {
+                    m_shootActionsTotalCount = 3;
+                }
+                else if (curPosition == LeftFar)
+                {
+                    m_shootActionsTotalCount = 4;
+                }
+                m_shootActionsTotalCount += 1;
             }
-            QPoint pos(mc[max_pos].x, mc[max_pos].y);
-            calculateDirection(pos);
+            else if (m_hsvCurrentMark.width > (int)(m_hsvTargetList[m_hsvTargetNum].maxWidth*g_access_ratio))
+            {
+                moveMode = Access;
+            }
+            else
+            {
+                moveMode = Track;
+            }
+
+            m_hsvAreaList.clear();
+            m_hsvRectList.clear();
+            m_hsvCenterList.clear();
         }
         else
         {
             curPosition = Unknown;
             msg.append("Unrecognized color\r\n");
         }
+
         msg.append("@End\r\n");
         emit sendInfo(msg);  //发送结果给客户端
 
@@ -601,173 +807,10 @@ void DiscernColor::autoForHSV()
         {
             accessTarget();
         }
-        else if (moveMode == Obstacle)
-        {
-            obstacleAvoidance();
-        }
         else if (moveMode == Wait)
         {
             emit sendInfo(QString("Reach.Target=%1").arg(m_hsvTargetList[m_hsvTargetNum].name));
         }
-    }
-    else
-    {
-        if (G_Shoot_Flag == 1 && !m_bShootFinished)  //足球
-        {
-            autoForFootball();
-        }
-    }
-}
-
-void DiscernColor::autoForFootball()
-{
-    //转为灰度图，进行图像平滑
-    Mat football_mat;
-    cvtColor(m_frame, football_mat, CV_BGR2GRAY);//转化边缘检测后的图为灰度图
-    GaussianBlur(football_mat, football_mat, Size(9, 9), 2, 2); //高斯模糊算法
-
-    //进行霍夫圆变换
-    vector<Vec3f> circles;//保存矢量
-    HoughCircles(football_mat, circles, CV_HOUGH_GRADIENT, 2, football_mat.rows/4, 200, 100, 0, 0);
-
-    if (moveMode == Shoot && actionStatus == Finished && isReady)
-    {
-        shootFootball();
-    }
-    else
-    {
-        if ((int)circles.size() == 0) //没有找到圆形目标
-        {
-            if (m_footballContours.size() > 0)
-            {
-                QPoint centerPos;
-                int radius = 0;
-                if (m_footballContours.size() == 1)
-                {
-                    centerPos.setX(cvRound(m_footballContours[0][0]));
-                    centerPos.setY(cvRound(m_footballContours[0][1]));
-                    radius = cvRound(m_footballContours[0][2]);
-                }
-                else
-                {
-                    vector<int> radiusVec;
-                    for (size_t i = 0; i < m_footballContours.size(); i++) {
-                        int radius = cvRound(m_footballContours[i][2]);
-                        radiusVec.push_back(radius);
-                    }
-
-                    //从小到大排序
-                    std::sort(radiusVec.begin(), radiusVec.end());
-                    //选择中值
-                    int p = 0;
-                    if (radiusVec.size()%2)
-                    {
-                        p = radiusVec.size()/2;
-                    }
-                    else
-                    {
-                        p = (radiusVec.size()+1)/2;
-                    }
-                    centerPos.setX(cvRound(m_footballContours[p][0]));
-                    centerPos.setY(cvRound(m_footballContours[p][1]));
-                    radius = cvRound(m_footballContours[p][2]);
-                }
-                m_footballContours.clear();
-                trackFootball(centerPos, radius);
-            }
-            else
-            {
-                if (actionStatus == Finished && isReady)
-                {
-                    if (lastActionStatus != StoopDown)
-                    {
-                        setActionStatus(StoopDown);
-                        emit directionChanged(g_stoop_down_command); //弯腰
-                    }
-                    else
-                    {
-                        m_findCount++;
-                        if (m_findCount > 3)
-                        {
-                            setActionStatus(TurnLeft_L);
-                            emit directionChanged(g_left_l_command);
-                        }
-                        else
-                        {
-                            setActionStatus(TurnRight_L);
-                            emit directionChanged(g_right_l_command);
-                        }
-                        if (m_findCount > 1000)
-                            m_findCount = 4;
-                    }
-                }
-            }
-        }
-        else  //找到圆形目标
-        {
-            m_findCount = 0;
-            if (actionStatus == Finished && isReady)
-            {
-                //如果识别到多个圆，选取最大的那个
-                vector<int> radiusVec;
-                for (size_t i = 0; i < circles.size(); i++)
-                {
-                    int radius = cvRound(circles[i][2]);
-                    radiusVec.push_back(radius);
-                }
-                int max_pos = (int)(max_element(radiusVec.begin(), radiusVec.end()) - radiusVec.begin());
-                if (max_pos < (int)(circles.size()))
-                {
-                    QPoint center(cvRound(circles[max_pos][0]), cvRound(circles[max_pos][1]));
-                    trackFootball(center, radiusVec[max_pos]);
-                }
-            }
-            else
-            {
-                if (lastActionStatus == StoopDown)
-                {
-                    vector<int> radiusVec;
-                    for (size_t i = 0; i < circles.size(); i++)
-                    {
-                        int radius = cvRound(circles[i][2]);
-                        radiusVec.push_back(radius);
-                    }
-                    int max_pos = (int)(max_element(radiusVec.begin(), radiusVec.end()) - radiusVec.begin());
-                    if (max_pos < (int)(circles.size()))
-                    {
-                        m_footballContours.push_back(circles[max_pos]);
-                    }
-                }
-            }
-        }
-    }
-}
-
-void DiscernColor::trackFootball(const QPoint &center, int &radius)
-{
-    calculateDirection(center);
-
-    if (radius > (int)(G_Football_Radius*g_arrive_ratio))
-    {
-        moveMode = Shoot;
-    }
-    else if (radius > (int)(G_Football_Radius*g_access_ratio))
-    {
-        moveMode = Access;
-    }
-    else
-    {
-        moveMode = Track;
-    }
-
-
-    if (moveMode == Track)
-    {
-        trackingTarget();
-    }
-    else if (moveMode == Access)
-    {
-        accessTarget();
     }
 }
 
@@ -932,6 +975,12 @@ void DiscernColor::findTarget()
         m_findCount = 0;
         break;
     case Unknown: //没有识别到颜色,先右转，如果向右转动3次还是找不到就持续左转
+        if (m_targetType == 2 && lastActionStatus != StoopDown)
+        {
+            setActionStatus(StoopDown);
+            emit directionChanged(g_stoop_down_command);
+            return;
+        }
         m_findCount++;
         if (m_findCount > 3)
         {
@@ -1040,36 +1089,10 @@ void DiscernColor::obstacleAvoidance()
 
 void DiscernColor::shootFootball()
 {    
-    int actionCount = 0;
-    if (curPosition == RightFar)
+    qDebug()<< "----------------=============start shoot !!!"<<m_shootActionsTotalCount;
+    if (m_m_shootActionsFinishedCount < m_shootActionsTotalCount)
     {
-        setActionStatus(ShootFootBall);
-        emit directionChanged(9);
-        m_bShootFinished = true;
-        moveMode = Track;
-    }
-    else if (curPosition == LeftFar)
-    {
-        actionCount = 4;
-    }
-    else if (curPosition == LeftNear)
-    {
-        actionCount = 3;
-    }
-    else if (curPosition == Center)
-    {
-        actionCount = 2;
-    }
-    else if (curPosition == RightNear)
-    {
-        actionCount = 1;
-    }
-    actionCount += 1;
-    qDebug()<< "----------------=============start shoot !!!"<<actionCount;
-
-    if (m_shootActionCount < actionCount)
-    {
-        if (m_shootActionCount == 0)
+        if (m_m_shootActionsFinishedCount == 0)
         {
             setActionStatus(QuickWalk);
             emit startMoveOn(2000);
@@ -1079,15 +1102,26 @@ void DiscernColor::shootFootball()
             setActionStatus(LeftShift);
             emit directionChanged(8);
         }
-        m_shootActionCount++;
+        m_m_shootActionsFinishedCount++;
     }
-    if (m_shootActionCount == actionCount)
+    else if (m_m_shootActionsFinishedCount == m_shootActionsTotalCount)
     {
         setActionStatus(ShootFootBall);
         emit directionChanged(9);
-        m_bShootFinished = true;
-        moveMode = Track;
-        m_shootActionCount = 0;
+        moveMode = Wait;
+        m_m_shootActionsFinishedCount = 0;
+        QString targetName;
+        if (G_Image_Format == "YUV")
+        {
+            targetName = m_targetList[targetNumber].name;
+            m_targetList[targetNumber].state = 1;
+        }
+        else if (G_Image_Format == "HSV")
+        {
+            targetName = m_hsvTargetList[m_hsvTargetNum].name;
+            m_hsvTargetList[m_hsvTargetNum].state = 1;
+        }
+        emit sendInfo(QString("Reach.Target=%1").arg(targetName));
     }
 }
 

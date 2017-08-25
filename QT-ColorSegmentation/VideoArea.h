@@ -19,6 +19,7 @@
 #include "ServerWifiSettings.h"
 #include "ConnectionBox.h"
 #include "ParameterSettingDialog.h"
+#include "LejuSlider.h"
 
 /**
  * @class     VideoArea
@@ -72,12 +73,9 @@ private slots:
     void on_yuv_radio_toggled(bool checked);  //选中YUV格式
     void on_hsv_radio_toggled(bool checked);  //选中HSV格式
     void on_goback_checkBox_clicked(bool checked);  //设置机器人完成所有目标后返回到第一个目标
-    void on_football_checkBox_clicked(bool checked);  //识别足球
 
     //亮度，对比度，Y值, HSV值滚动条
     void onSliderValueChanged(int value);
-
-    void on_shooot_checkBox_clicked(bool checked);
 
 protected:
     virtual void resizeEvent(QResizeEvent *e) Q_DECL_OVERRIDE;
@@ -98,7 +96,7 @@ private:
     QList<QPushButton*> btnList;
     QButtonGroup *action_btn_group;
 
-    QList<QSlider*> qsliderList;
+    QList<LejuSlider*> qsliderList;
 
     PortSetupDialog *portSetupDialog;
     ScanIpDiaog *scanIpDialog;

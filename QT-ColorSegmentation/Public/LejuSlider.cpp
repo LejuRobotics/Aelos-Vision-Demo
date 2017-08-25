@@ -2,7 +2,21 @@
 
 LejuSlider::LejuSlider(QWidget *parent) : QSlider(parent)
 {
+    isBlocked = false;
+    connect(this, SIGNAL(valueChanged(int)), this, SLOT(onValueChanged(int)));
+}
 
+void LejuSlider::SetValue(int val)
+{
+    isBlocked = true;
+    setValue(val);
+    isBlocked = false;
+}
+
+void LejuSlider::onValueChanged(int val)
+{
+    if (!isBlocked)
+        emit sliderValueChanged(val);
 }
 
 void LejuSlider::mouseReleaseEvent(QMouseEvent *e)

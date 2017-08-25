@@ -33,10 +33,7 @@ int g_log_file_switch = 0;
 
 QString G_Image_Display = "Original";
 QString G_Image_Format = "HSV";
-QString G_Object_Type = "Null";
 int G_Go_Back_Flag = 0;
-int G_Shoot_Flag = 0;
-int G_Football_Radius = 0;
 
 const qint64 LOG_FILE_MAX_SIZE = 5*1024*1024;  //日志文件大小的最大值
 

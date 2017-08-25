@@ -89,8 +89,8 @@ VideoArea::VideoArea(QWidget *parent) :
                 << ui->colorMinH_slider << ui->colorMinS_slider << ui->colorMinV_slider
                 << ui->colorMaxH_slider << ui->colorMaxS_slider << ui->colorMaxV_slider;
 
-    foreach (QSlider *obj, qsliderList) {
-        connect(obj, SIGNAL(valueChanged(int)), this, SLOT(onSliderValueChanged(int)));
+    foreach (LejuSlider *obj, qsliderList) {
+        connect(obj, SIGNAL(sliderValueChanged(int)), this, SLOT(onSliderValueChanged(int)));
     }
 
     parameterSettingDialog = new ParameterSettingDialog(this);
@@ -376,12 +376,18 @@ void VideoArea::onLongSocketReadyRead()
                 QStringList valList = strVal.split(",");
                 if (valList.length() == 6)
                 {
-                    ui->colorMinH_slider->setValue(valList[0].toInt());
-                    ui->colorMinS_slider->setValue(valList[1].toInt());
-                    ui->colorMinV_slider->setValue(valList[2].toInt());
-                    ui->colorMaxH_slider->setValue(valList[3].toInt());
-                    ui->colorMaxS_slider->setValue(valList[4].toInt());
-                    ui->colorMaxV_slider->setValue(valList[5].toInt());
+                    ui->colorMinH_slider->SetValue(valList[0].toInt());
+                    ui->colorMinH_label->setText(QString("MinH: %1").arg(valList[0].toInt()));
+                    ui->colorMinS_slider->SetValue(valList[1].toInt());
+                    ui->colorMinS_label->setText(QString("MinS: %1").arg(valList[1].toInt()));
+                    ui->colorMinV_slider->SetValue(valList[2].toInt());
+                    ui->colorMinV_label->setText(QString("MinV: %1").arg(valList[2].toInt()));
+                    ui->colorMaxH_slider->SetValue(valList[3].toInt());
+                    ui->colorMaxH_label->setText(QString("MaxH: %1").arg(valList[3].toInt()));
+                    ui->colorMaxS_slider->SetValue(valList[4].toInt());
+                    ui->colorMaxS_label->setText(QString("MaxS: %1").arg(valList[4].toInt()));
+                    ui->colorMaxV_slider->SetValue(valList[5].toInt());
+                    ui->colorMaxV_label->setText(QString("MaxV: %1").arg(valList[5].toInt()));
                 }
             }
             else if (readData.startsWith("Reach.Target"))
@@ -856,7 +862,7 @@ void VideoArea::on_hsv_radio_toggled(bool checked)
 
 void VideoArea::onSliderValueChanged(int value)
 {
-    QSlider *obj = qobject_cast<QSlider*>(sender());
+    LejuSlider *obj = qobject_cast<LejuSlider*>(sender());
     QString name = obj->property("name").toString();
     if (name == "Brightness")
     {
@@ -912,20 +918,6 @@ void VideoArea::addInfomation(const QString &msg)
     ui->textEdit->append(msg);
 }
 
-void VideoArea::on_football_checkBox_clicked(bool checked)
-{
-    QString msg;
-    if (checked)
-    {
-        msg.append("set Object.Type=football");
-    }
-    else
-    {
-        msg.append("set Object.Type=Null");
-    }
-    WriteData(msg.toUtf8());
-}
-
 void VideoArea::on_goback_checkBox_clicked(bool checked)
 {
     QString msg;
@@ -936,20 +928,6 @@ void VideoArea::on_goback_checkBox_clicked(bool checked)
     else
     {
         msg = "set Robot.Go.Back=0";
-    }
-    WriteData(msg.toUtf8());
-}
-
-void VideoArea::on_shooot_checkBox_clicked(bool checked)
-{
-    QString msg;
-    if (checked)
-    {
-        msg = QString("set Robot.Shoot=1,%1").arg(ui->football_radius_edit->text());
-    }
-    else
-    {
-        msg = QString("set Robot.Shoot=0,%1").arg(ui->football_radius_edit->text());
     }
     WriteData(msg.toUtf8());
 }
