@@ -9,8 +9,19 @@ class LejuSlider : public QSlider
 public:
     explicit LejuSlider(QWidget *parent = nullptr);
 
+    bool isBlocked;
+
+    void SetValue(int val);
+
+signals:
+    void sliderValueChanged(int val);
+
+private slots:
+    void onValueChanged(int val);
+
 protected:
     virtual void mouseReleaseEvent(QMouseEvent *e);
+
 };
 
 #endif // LEJUSLIDER_H

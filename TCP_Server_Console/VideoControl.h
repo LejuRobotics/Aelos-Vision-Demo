@@ -49,8 +49,9 @@ private:
 
     QString m_client_ip;      /**< 客户端ip */
 
+    Mat srcFrame;
+
     QUdpSocket *udpSocket;
-    QByteArray byte;
 
     Mat rgb_mat;
     QImage rgbImg;
@@ -58,6 +59,10 @@ private:
 
     double alpha;             /**< 亮度 */
     int beta;                 /**< 对比度 */
+
+    void sendFrameOfYUV();
+    void sendFrameOfHSV();
+
 };
 
 #endif // VIDEOCONTROL_H

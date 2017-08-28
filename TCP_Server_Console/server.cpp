@@ -479,31 +479,11 @@ bool Server::parseData(const QString &msg)
         discernColor->startAddHsvTarget();
         return true;
     }
-    else if (msg.startsWith("set Object.Type"))
-    {
-        QString objType = msg.mid(msg.indexOf("=")+1);
-        if (objType == "Null" || objType == "football")
-        {
-            G_Object_Type = objType;
-            return true;
-        }
-    }
     else if (msg.startsWith("set Robot.Go.Back"))
     {
         G_Go_Back_Flag = msg.mid(msg.indexOf("=")+1).toInt();
         return true;
     }
-    else if (msg.startsWith("set Robot.Shoot"))
-    {
-        QStringList valList = msg.mid(msg.indexOf("=")+1).split(",");
-        if (valList.length() == 2)
-        {
-            G_Shoot_Flag = valList[0].toInt();
-            G_Football_Radius = valList[1].toInt();
-            return true;
-        }
-    }
-
     return false;
 }
 

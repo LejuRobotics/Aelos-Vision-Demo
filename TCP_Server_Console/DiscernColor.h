@@ -156,9 +156,9 @@ private:
 
     void autoForYUV();
     void autoForHSV();
-    void autoForFootball();
 
-    void trackFootball(const QPoint &center, int &radius);
+    void derectOfHSV();
+    void recordStoopDownOfHSV();
 
     bool getCurrentMark(const vector<Object*> &objList);
     void calculateDirection(const QPoint &pos);
@@ -216,11 +216,14 @@ private:
     int m_hsvTargetNum;
     QList<HSV_Target> m_hsvTargetList;  /**< 记录HSV目标的容器 */
 
-    bool m_bShootFinished;
-    int m_shootActionCount;
+    int m_targetType;
 
-    vector<Vec3f> m_footballContours;
+    int m_shootActionsTotalCount;
+    int m_m_shootActionsFinishedCount;
 
+    QList<int> m_hsvAreaList;
+    QList<Rect> m_hsvRectList;
+    QList<QPoint> m_hsvCenterList;
 };
 
 #endif // DISCERNCOLOR_H
