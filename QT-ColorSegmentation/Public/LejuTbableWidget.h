@@ -53,6 +53,7 @@ public:
     int lastType() const;
     int lastTurn() const;
     bool isAllFinished() const;
+    void resetState();
 
 protected:
     virtual void contextMenuEvent(QContextMenuEvent *e);

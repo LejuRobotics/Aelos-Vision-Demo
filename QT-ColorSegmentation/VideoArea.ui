@@ -363,19 +363,6 @@
       <string>Stoop down</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="action_btn_8">
-     <property name="geometry">
-      <rect>
-       <x>370</x>
-       <y>100</y>
-       <width>90</width>
-       <height>28</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Right shift</string>
-     </property>
-    </widget>
     <widget class="QPushButton" name="action_btn_9">
      <property name="geometry">
       <rect>
@@ -386,7 +373,49 @@
       </rect>
      </property>
      <property name="text">
+      <string>Right shift</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="action_btn_10">
+     <property name="geometry">
+      <rect>
+       <x>370</x>
+       <y>180</y>
+       <width>90</width>
+       <height>28</height>
+      </rect>
+     </property>
+     <property name="text">
       <string>Right shoot</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="action_btn_8">
+     <property name="geometry">
+      <rect>
+       <x>370</x>
+       <y>100</y>
+       <width>90</width>
+       <height>28</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Left shift</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="again_btn">
+     <property name="geometry">
+      <rect>
+       <x>250</x>
+       <y>20</y>
+       <width>90</width>
+       <height>28</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Again</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
      </property>
     </widget>
    </widget>

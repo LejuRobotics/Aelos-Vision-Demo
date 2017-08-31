@@ -22,7 +22,10 @@ int g_left_s_command = 3;
 int g_right_s_command = 4;
 int g_left_l_command = 5;
 int g_right_l_command = 6;
-int g_stoop_down_command = 7;
+int g_stoop_down_command = 7;         
+int g_left_shift_command = 8;
+int g_right_shift_command = 9;
+int g_right_kick_command = 10;
 int g_ping_router_count = 8;
 QString g_robot_number = "AELOS150C00D";
 int g_far_move_on_time = 3500;
@@ -30,6 +33,8 @@ int g_near_move_on_time = 1500;
 double g_arrive_ratio = 0.9;
 double g_access_ratio = 0.4;
 int g_log_file_switch = 0;
+int g_turn_round_count = 9;
+int g_access_football_time = 1000;
 
 QString G_Image_Display = "Original";
 QString G_Image_Format = "HSV";
@@ -117,6 +122,10 @@ void readConfigFile()
     g_left_l_command = iniReader.value("Debug/lLeftCommand").toInt();
     g_right_l_command = iniReader.value("Debug/lRightCommand").toInt();
     g_stoop_down_command = iniReader.value("Debug/stoopDownCommand").toInt();
+    g_left_shift_command = iniReader.value("Debug/leftShiftCommand").toInt();
+    g_right_shift_command = iniReader.value("Debug/rightShiftCommand").toInt();
+    g_right_kick_command = iniReader.value("Debug/rightKickCommand").toInt();
+    g_turn_round_count = iniReader.value("Debug/turnRoundCount").toInt();
     g_ping_router_count = iniReader.value("Debug/pingRouterCount").toInt();
     g_robot_number = iniReader.value("Robot/No").toString();
     g_far_move_on_time = iniReader.value("Debug/moveOnFarTime").toInt();
@@ -124,6 +133,8 @@ void readConfigFile()
     g_arrive_ratio = iniReader.value("Debug/arriveRatio").toDouble();
     g_access_ratio = iniReader.value("Debug/accessRatio").toDouble();
     g_log_file_switch = iniReader.value("Debug/logFileSwitch").toInt();
+    g_turn_round_count = iniReader.value("Debug/turnRoundCount").toInt();
+    g_access_football_time = iniReader.value("Debug/accessFootballTime").toInt();
 
     qDebug()<< "serialName: "<< g_serial_name << "\n"
             << "baudRate: " << g_baud_rate << "\n"
@@ -142,13 +153,18 @@ void readConfigFile()
             << "g_left_l_command: " << g_left_l_command << "\n"
             << "g_right_l_command: " << g_right_l_command << "\n"
             << "g_stoop_down_command: " << g_stoop_down_command << "\n"
+            << "g_left_shift_command: " << g_left_shift_command << "\n"
+            << "g_right_shift_command: " << g_right_shift_command << "\n"
+            << "g_right_kick_command: " << g_right_kick_command << "\n"
             << "g_ping_router_count: " << g_ping_router_count << "\n"
             << "g_robot_number: " << g_robot_number << "\n"
             << "g_far_move_on_time: " << g_far_move_on_time << "\n"
             << "g_near_move_on_time: " << g_near_move_on_time << "\n"
             << "g_arrive_ratio: " << g_arrive_ratio << "\n"
             << "g_access_ratio: " << g_access_ratio << "\n"
-            << "g_log_file_switch: " << g_log_file_switch << "\n";
+            << "g_log_file_switch: " << g_log_file_switch << "\n"
+            << "g_turn_round_count: " << g_turn_round_count << "\n"
+            << "g_access_football_time: " << g_access_football_time << "\n";
 }
 
 

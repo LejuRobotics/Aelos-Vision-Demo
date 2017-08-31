@@ -59,6 +59,9 @@ extern int g_right_s_command;             /**< 右转指令(小幅度) */
 extern int g_left_l_command;              /**< 左转指令(大幅度) */
 extern int g_right_l_command;             /**< 右转指令(大幅度) */
 extern int g_stoop_down_command;          /**< 弯腰 */
+extern int g_left_shift_command;          /**< 左移 */
+extern int g_right_shift_command;         /**< 右移 */
+extern int g_right_kick_command;          /**< 右踢 */
 extern int g_ping_router_count;           /**< 程序启动后ping路由器的次数，每次间隔5秒，如果ping8次（也就是40s）,无法读到数据，则重启设为热点模式 */
 extern QString g_robot_number;            /**< 机器人编号 */
 extern int g_far_move_on_time;            /**< 离目标较远的时候，快走的时长 */
@@ -66,6 +69,8 @@ extern int g_near_move_on_time;           /**< 离目标较近的时候，快走
 extern double g_arrive_ratio;             /**< 判读到达指定目标位置的标记框的宽的比例 */
 extern double g_access_ratio;             /**< 当前标记框的宽度大于记录的标记框宽度乘以这个比例，则执行慢慢靠近的动作模式 */
 extern int g_log_file_switch;             /**< 是否保存程序打印日志，0否，1是 */
+extern int g_turn_round_count;            /**< 如果设置机器人支持返回初始目标，这个值是机器人到达最后一个目标后进行持续右转直至转身180度的转动次数 */
+extern int g_access_football_time;        /**< 目前通过弯腰动作机器人无法看到自己的脚，这个是机器人在识别到足球的最近距离走到足球能够进行射门需要的行走时长 */
 
 
 /*************************************************************

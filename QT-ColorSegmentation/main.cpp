@@ -7,6 +7,7 @@ int main(int argc, char *argv[])
 
     VideoArea w;
     w.show();
+    w.setFixedSize(w.size());
 
     return a.exec();
 }

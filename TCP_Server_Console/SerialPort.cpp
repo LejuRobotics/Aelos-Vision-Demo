@@ -130,3 +130,59 @@ QSerialPort::BaudRate SerialPort::toBaudRate(int rate)
         return QSerialPort::UnknownBaud;
     }
 }
+
+void SerialPort::sendMsg(QString &str)
+{
+    QByteArray sendBuf;
+    if (str.contains(" "))
+    {
+        str.replace(QString(" "),QString(""));
+    }
+    qDebug()<<"Write to serial: "<<str;
+    convertStringToHex(str, sendBuf);
+    m_serialPort->write(sendBuf);
+}
+
+void SerialPort::convertStringToHex(const QString &str, QByteArray &byteData)
+{
+    int hexdata,lowhexdata;
+    int hexdatalen = 0;
+    int len = str.length();
+    byteData.resize(len/2);
+    char lstr,hstr;
+    for(int i=0; i<len; )
+    {
+        //char lstr,
+        hstr=str[i].toLatin1();
+        if(hstr == ' ')
+        {
+            i++;
+            continue;
+        }
+        i++;
+        if(i >= len)
+            break;
+        lstr = str[i].toLatin1();
+        hexdata = convertCharToHex(hstr);
+        lowhexdata = convertCharToHex(lstr);
+        if((hexdata == 16) || (lowhexdata == 16))
+            break;
+        else
+            hexdata = hexdata*16+lowhexdata;
+        i++;
+        byteData[hexdatalen] = (char)hexdata;
+        hexdatalen++;
+    }
+    byteData.resize(hexdatalen);
+}
+
+char SerialPort::convertCharToHex(char ch)
+{
+    if((ch >= '0') && (ch <= '9'))
+         return ch-0x30;
+     else if((ch >= 'A') && (ch <= 'F'))
+         return ch-'A'+10;
+     else if((ch >= 'a') && (ch <= 'f'))
+         return ch-'a'+10;
+     else return (-1);
+}
