@@ -64,6 +64,7 @@ private slots:
 
     void on_record_btn_clicked();  //点击Record按钮
     void on_reset_btn_clicked();   //点击Reset按钮
+    void on_again_btn_clicked();   //点击Again按钮
     void on_auto_radio_clicked(bool checked);  //点击auto按钮
     void on_manual_radio_clicked(bool checked); //点击manual按钮
     void onActionButtonGroupClicked(int btnID);  //点击动作按钮，如Quick walk, Quick back等
@@ -76,6 +77,7 @@ private slots:
 
     //亮度，对比度，Y值, HSV值滚动条
     void onSliderValueChanged(int value);
+    void onSliderTimeout();
 
 protected:
     virtual void resizeEvent(QResizeEvent *e) Q_DECL_OVERRIDE;

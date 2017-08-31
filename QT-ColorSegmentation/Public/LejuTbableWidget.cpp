@@ -101,6 +101,14 @@ bool LejuTbableWidget::isAllFinished() const
     return true;
 }
 
+void LejuTbableWidget::resetState()
+{
+    for (int i=0; i<rowCount(); ++i)
+    {
+        item(i, 6)->setText(tr("未完成"));
+    }
+}
+
 void LejuTbableWidget::onDeleteItem()
 {
     QString msg;

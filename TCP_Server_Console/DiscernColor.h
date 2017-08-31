@@ -75,7 +75,8 @@ public:
         Access,      /**< 慢慢靠近模式 */
         Obstacle,    /**< 避障模式 */       
         Wait,        /**< 等待模式 */
-        Shoot        /**< 射门模式 */
+        Shoot,       /**< 开始射门模式 */
+        ShootAdjust  /**< 调整射门位置模式 */
     };
 
     /**
@@ -104,7 +105,7 @@ public:
     /**
      * @brief YUV目标
      */
-    struct Target {
+    struct YUV_Target {
         QString name;           /**< 目标名称 */
         int type;               /**< 目标类型，0障碍物，1目标, 2足球*/
         int maxWidth;           /**< 在停止靠近目标的位置识别到的标记框宽度 */
@@ -135,8 +136,8 @@ public:
     void setActionMode(int mode);
     void setActionStatus(ActionStatus status);
     void setColorChannelY(int val);
-
     void startAddHsvTarget();
+    void startAgain();
 
 public slots:
     void readFrame(QImage &image);
@@ -155,10 +156,14 @@ private:
     void autoOperation();
 
     void autoForYUV();
-    void autoForHSV();
+    void derectOfYUV();
+    void recordStoopDownOfYUV();
 
+    void autoForHSV();
     void derectOfHSV();
     void recordStoopDownOfHSV();
+
+    void excuteTurnRound();
 
     bool getCurrentMark(const vector<Object*> &objList);
     void calculateDirection(const QPoint &pos);
@@ -170,6 +175,7 @@ private:
     void accessTarget();
     void obstacleAvoidance();
     void shootFootball();
+    void adjustShootFootball();
 
     void addColor(Mat &frame);
     void segment(Mat &frame, ColorInfo &info, bool mask);
@@ -186,8 +192,7 @@ private:
     QRect m_select_rect;
     Position curPosition;          /**< 当前目标所在的方向 */
 
-    QRect currentMark;             /**< 识别物体的标记框位置 */
-    QPoint currentCenterPoint;
+
     int actionMode;                /**< 动作模式: 0,手动(测试阶段默认)  1,自动 */
     bool isReady;                  /**< 是否做好动作准备 */
 
@@ -196,11 +201,6 @@ private:
 
     MoveMode moveMode;
 
-    int targetNumber;
-    int obstacleCount;
-    int m_findCount;
-    int m_nMoveOnTimeCount;
-
     QString m_mark_rgb;                 /**< 标记框颜色 */
     ColorInfo colorInfo;                /**< 记录标记的颜色的信息 */
     std::vector<Object*> objList;       /**< 识别到颜色位置的对象的容器 */
@@ -208,22 +208,33 @@ private:
     int w;
     int h;
 
-    QList<Target> m_targetList;        /**< 记录YUV目标的容器 */
+    int obstacleCount;
+    int m_findCount;
+    int m_nMoveOnTimeCount;
+
+    int m_yuvTargetNum;
+    Rect currentMark;                   /**< YUV识别物体的标记框位置 */
+    QPoint m_yuvCenterPoint;
+    QList<YUV_Target> m_yuvTargetList;  /**< 记录YUV目标的容器 */
 
     Mat hsv_mat;
     bool m_bAddHsvFlag;
-    Rect m_hsvCurrentMark;
+    Rect m_hsvCurrentMark;              /**< HSV识别物体的标记框位置 */
     int m_hsvTargetNum;
+    QPoint m_hsvCenterPoint;
     QList<HSV_Target> m_hsvTargetList;  /**< 记录HSV目标的容器 */
 
     int m_targetType;
+    int m_shootActionsFinishedCount;
 
-    int m_shootActionsTotalCount;
-    int m_m_shootActionsFinishedCount;
+    QList<int> m_area_list;
+    QList<Rect> m_mark_list;
+    QList<QPoint> m_center_point_list;
 
-    QList<int> m_hsvAreaList;
-    QList<Rect> m_hsvRectList;
-    QList<QPoint> m_hsvCenterList;
+    QList<YUV_Target> m_yuv_return_list;
+    QList<HSV_Target> m_hsv_return_list;
+
+    bool m_bTurnRoundFinished;
 };
 
 #endif // DISCERNCOLOR_H

@@ -35,6 +35,7 @@ Server::Server()
     videoControl = new VideoControl(this);
     mplayer = new QProcess(this);
     m_timer_2 = new QTimer(this);
+    m_cmdTimer = new QTimer(this);
 
     connect(tcpServer,SIGNAL(newConnection()),this,SLOT(onNewConnection()));
     connect(serialPort, SIGNAL(actionFinished()), this, SLOT(onActionFinished()));
@@ -46,6 +47,7 @@ Server::Server()
     connect(discernColor, SIGNAL(startMoveOn(int)), this, SLOT(onStartMoveOn(int)));
     connect(m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
     connect(m_timer_2, SIGNAL(timeout()), this, SLOT(onReadyPlayLowBattery()));
+    connect(m_cmdTimer, SIGNAL(timeout()), this, SLOT(onCmdTimerout()));
 }
 
 /**
@@ -302,25 +304,19 @@ bool Server::parseData(const QString &msg)
         QStringList msgList = msg.split(",");
         if (msgList.size() == 2)
         {
-            if (msgList[1] == "1" || msgList[1] == "2" ||
-                    msgList[1] == "3" || msgList[1] == "4" ||
-                    msgList[1] == "5" || msgList[1] == "6" ||
-                    msgList[1] == "7" || msgList[1] == "8" ||
-                    msgList[1] == "9")
-            {
-                onDirectionChanged(msgList[1].toInt());
-                return true;
-            }
-            else if (msgList[1] == "on") //持续快走
+            if (msgList[1] == "on") //持续快走
             {
                 WriteSerial2("0xd7");
-                return true;
             }
             else if (msgList[1] == "stop") //停止快走
             {
-                WriteSerial2("0xda");
-                return true;
+                WriteSerial2("0xda");                
             }
+            else
+            {
+                WriteSerial(msgList[1].toInt());
+            }
+            return true;
         }
     }
     else if (msg.startsWith("set Wifi.Settings="))
@@ -484,6 +480,11 @@ bool Server::parseData(const QString &msg)
         G_Go_Back_Flag = msg.mid(msg.indexOf("=")+1).toInt();
         return true;
     }
+    else if (msg == "Start Again")
+    {
+        discernColor->startAgain();
+        return true;
+    }
     return false;
 }
 
@@ -494,13 +495,29 @@ bool Server::parseData(const QString &msg)
 
 void Server::WriteMsg(const QByteArray &msg)
 {
-    QByteArray outBlock;
-    QDataStream out(&outBlock,QIODevice::WriteOnly);
-    out << qint32(0);
-    out.device()->seek(0);
-    out << outBlock.size() + msg.size() << msg;
-    tcpSocket->write(outBlock);
-    tcpSocket->waitForBytesWritten();
+    m_cmdQueue.append(msg);
+    if (!m_cmdTimer->isActive())
+        m_cmdTimer->start(100);
+}
+
+void Server::onCmdTimerout()
+{
+    if (!m_cmdQueue.isEmpty())
+    {
+        QByteArray msg = m_cmdQueue.dequeue();
+        QByteArray outBlock;
+        QDataStream out(&outBlock,QIODevice::WriteOnly);
+        out << qint32(0);
+        out.device()->seek(0);
+        out << outBlock.size() + msg.size() << msg;
+        tcpSocket->write(outBlock);
+        tcpSocket->waitForBytesWritten();
+    }
+
+    if (m_cmdQueue.isEmpty() && m_cmdTimer->isActive())
+    {
+        m_cmdTimer->stop();
+    }
 }
 
 /**
@@ -601,79 +618,107 @@ void Server::modifyNetworkFile(const QString &id, const QString &password)
 
 void Server::WriteSerial(int val)
 {
-    int bufferSize = 9;
-    unsigned char serialnum[] = {0xd3,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x31};
-//    unsigned char serialnum[] = {0xd3,0x00,0x00,0x00,0x00,0x05,0x00,0x00,0x31,0x21,0x61,0x63,0x74};
-    bool isOk = false;
-    switch (val)
+//    int bufferSize = 9;
+//    unsigned char serialnum[] = {0xd3,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x31};
+////    unsigned char serialnum[] = {0xd3,0x00,0x00,0x00,0x00,0x05,0x00,0x00,0x31,0x21,0x61,0x63,0x74};
+//    bool isOk = false;
+//    switch (val)
+//    {
+//    case 1:  //快走
+//    {
+//        serialnum[8] = 0x31;
+//        isOk = true;
+//    }
+//        break;
+//    case 2:  //快退
+//    {
+//        serialnum[8] = 0x32;
+//        isOk = true;
+//    }
+//        break;
+//    case 3:  //左转（小）
+//    {
+//        serialnum[8] = 0x33;
+//        isOk = true;
+//    }
+//        break;
+//    case 4:  //右转（小）
+//    {
+//        serialnum[8] = 0x34;
+//        isOk = true;
+//    }
+//        break;
+//    case 5:  //左转（大）
+//    {
+//        serialnum[8] = 0x35;
+//        isOk = true;
+//    }
+//        break;
+//    case 6:  //右转（大）
+//    {
+//        serialnum[8] = 0x36;
+//        isOk = true;
+//    }
+//        break;
+//    case 7:
+//    {
+//        serialnum[8] = 0x37;
+//        isOk = true;
+//    }
+//        break;
+//    case 8:
+//    {
+//        serialnum[8] = 0x38;
+//        isOk = true;
+//    }
+//        break;
+//    case 9:
+//    {
+//        serialnum[8] = 0x39;
+//        isOk = true;
+//    }
+//        break;
+//    default:
+//        break;
+//    }
+
+//    if (isOk)
+//    {
+//        qDebug("start action: move,%d",val);
+//        char* buf = (char*)(&serialnum);
+//        serialPort->sendMsg(buf,bufferSize);
+//#ifdef Q_OS_WIN
+//        QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
+//#endif
+//    }
+
+    QString strVal = QString::number(val);
+    if (strVal.length() > SCM_MAX_BUFFER_SIZE)
     {
-    case 1:  //快走
-    {
-        serialnum[8] = 0x31;
-        isOk = true;
-    }
-        break;
-    case 2:  //快退
-    {
-        serialnum[8] = 0x32;
-        isOk = true;
-    }
-        break;
-    case 3:  //左转（小）
-    {
-        serialnum[8] = 0x33;
-        isOk = true;
-    }
-        break;
-    case 4:  //右转（小）
-    {
-        serialnum[8] = 0x34;
-        isOk = true;
-    }
-        break;
-    case 5:  //左转（大）
-    {
-        serialnum[8] = 0x35;
-        isOk = true;
-    }
-        break;
-    case 6:  //右转（大）
-    {
-        serialnum[8] = 0x36;
-        isOk = true;
-    }
-        break;
-    case 7:
-    {
-        serialnum[8] = 0x37;
-        isOk = true;
-    }
-        break;
-    case 8:
-    {
-        serialnum[8] = 0x38;
-        isOk = true;
-    }
-        break;
-    case 9:
-    {
-        serialnum[8] = 0x39;
-        isOk = true;
-    }
-        break;
-    default:
-        break;
+        qDebug()<< "error: buffer size out of range, the max buffer size is 65535 !" << __FILE__ << __LINE__;
+        return;
     }
 
-    if (isOk)
+    QByteArray hexVal = strVal.toLatin1().toHex();
+    QString strHighSize, strLowSize, cmd;
+    if (strVal.length() < 256)
     {
-        qDebug("start action: move,%d",val);
-        char* buf = (char*)(&serialnum);
-        serialPort->sendMsg(buf,bufferSize);
-#ifdef Q_OS_WIN
-        QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
-#endif
+        convertIntToHex(strLowSize, strVal.length());
+        cmd = QString("d3 00 00 00 00 %1 00 00 %2").arg(strLowSize).arg(QString(hexVal));
     }
+    else
+    {
+        int highSize = strVal.length() / 255;
+        int lowSize = strVal.length() % 255;
+        convertIntToHex(strHighSize, highSize);
+        convertIntToHex(strLowSize, lowSize);
+        cmd = QString("d3 00 00 00 %1 %2 00 00 %3").arg(strHighSize).arg(strLowSize).arg(QString(hexVal));
+    }
+
+    serialPort->sendMsg(cmd);
+#ifdef Q_OS_WIN
+    QTimer::singleShot(2000, this, SLOT(onActionFinished())); //测试，判断动作timeCount毫秒后完成
+#endif
 }
 
 void Server::WriteSerial2(const QString &val)
@@ -702,6 +747,14 @@ void Server::WriteSerial2(const QString &val)
 #endif
 }
 
+QString Server::convertIntToHex(QString &outStr,int num)
+{
+    outStr = QString::number(num,16);
+    if (outStr.length() == 1)
+        outStr.insert(0,"0");
+
+    return outStr;
+}
 
 /**
  * @brief     定时器超时，广播服务器IP地址

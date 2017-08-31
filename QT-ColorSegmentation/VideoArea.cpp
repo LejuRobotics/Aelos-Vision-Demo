@@ -33,12 +33,23 @@ VideoArea::VideoArea(QWidget *parent) :
     btnList << ui->action_btn_1 << ui->action_btn_2 << ui->action_btn_3
             << ui->action_btn_4 << ui->action_btn_5 << ui->action_btn_6
             << ui->action_btn_7 << ui->action_btn_8 << ui->action_btn_9
-            << ui->action_btn_MoveOn << ui->action_btn_MoveStop;
+            << ui->action_btn_10 << ui->action_btn_MoveOn << ui->action_btn_MoveStop;
 
     for(int i=0; i<btnList.size(); i++)
     {
         btnList[i]->setEnabled(false);
-        action_btn_group->addButton(btnList[i],(i+1));
+        if (btnList[i]->text() == "Move on")
+        {
+            action_btn_group->addButton(btnList[i],100);
+        }
+        else if (btnList[i]->text() == "Move stop")
+        {
+            action_btn_group->addButton(btnList[i],101);
+        }
+        else
+        {
+            action_btn_group->addButton(btnList[i],(i+1));
+        }
     }
     connect(action_btn_group, SIGNAL(buttonClicked(int)), this, SLOT(onActionButtonGroupClicked(int)));
 
@@ -106,6 +117,9 @@ VideoArea::VideoArea(QWidget *parent) :
     connect(m_timer, SIGNAL(timeout()), this, SLOT(onTimeout()));
     m_frame_count = 0;
 
+    m_sliderTimer = new QTimer(this);
+    connect(m_sliderTimer, SIGNAL(timeout()), this, SLOT(onSliderTimeout()));
+
     QNetworkProxyFactory::setUseSystemConfiguration(false);
     m_long_socket = new QTcpSocket(this);
     m_long_socket->setProxy(QNetworkProxy::NoProxy);
@@ -140,8 +154,7 @@ VideoArea::~VideoArea()
 
 void VideoArea::WriteData(const QByteArray &msg)
 {
-    QThread::msleep(10);
-    if (msg.isEmpty())
+    if (msg.isEmpty() && !m_long_socket->isOpen())
         return;
 
     QByteArray outBlock;
@@ -403,11 +416,11 @@ void VideoArea::onLongSocketReadyRead()
                     }
                 }
 
-                if (ui->tableWidget->isAllFinished())
-                {
-                    ui->manual_radio->setChecked(true);
-                    on_manual_radio_clicked(true);
-                }
+//                if (ui->tableWidget->isAllFinished())
+//                {
+//                    ui->manual_radio->setChecked(true);
+//                    on_manual_radio_clicked(true);
+//                }
             }
         }
         m_bufferReadSize = 0;
@@ -691,10 +704,18 @@ void VideoArea::on_reset_btn_clicked()
     WriteData(cmd.toUtf8());
 
     ui->manual_radio->setChecked(true);
+    on_manual_radio_clicked(true);
     for (int i=ui->tableWidget->rowCount()-1; i>-1; --i)
     {
         ui->tableWidget->removeRow(i);
     }
+}
+
+void VideoArea::on_again_btn_clicked()
+{
+    ui->tableWidget->resetState();
+    QString cmd("Start Again");
+    WriteData(cmd.toUtf8());
 }
 
 /**
@@ -710,7 +731,7 @@ void VideoArea::on_auto_radio_clicked(bool checked)
         {
             btnList[i]->setEnabled(false);
         }
-        QString cmd = "set Robot.Action=auto";
+        QString cmd("set Robot.Action=auto");
         WriteData(cmd.toUtf8());
     }
 }
@@ -728,7 +749,7 @@ void VideoArea::on_manual_radio_clicked(bool checked)
         {
             btnList[i]->setEnabled(true);
         }
-        QString cmd = "set Robot.Action=manual";
+        QString cmd("set Robot.Action=manual");
         WriteData(cmd.toUtf8());
     }
 }
@@ -741,15 +762,15 @@ void VideoArea::on_manual_radio_clicked(bool checked)
 void VideoArea::onActionButtonGroupClicked(int btnID)
 {
     QString cmd;
-    if (btnID < 10)
+    if (btnID < 100)
     {
         cmd = QString("Move,%1").arg(btnID);
     }
-    else if (btnID == 10)
+    else if (btnID == 100)
     {
         cmd = "Move,on";
     }
-    else if (btnID == 11)
+    else if (btnID == 101)
     {
         cmd = "Move,stop";
     }
@@ -848,6 +869,7 @@ void VideoArea::on_hsv_radio_toggled(bool checked)
         ui->colorY_label->setEnabled(false);
         ui->colorY_slider->setEnabled(false);
         ui->hsvGroupBox->setEnabled(true);
+        mark_label->cleanRect();
 
         QString msg = QString("set Image.Format=HSV,%1,%2,%3,%4,%5,%6")
                 .arg(ui->colorMinH_slider->value())
@@ -910,7 +932,15 @@ void VideoArea::onSliderValueChanged(int value)
         ui->colorMaxV_label->setText(QString("MaxV: %1").arg(value));
         m_command = QString("set HSV.Channel.MaxV=%1").arg(value);
     }
+
+    if (!m_sliderTimer->isActive())
+        m_sliderTimer->start(300);
+}
+
+void VideoArea::onSliderTimeout()
+{
     WriteData(m_command.toUtf8());
+    m_sliderTimer->stop();
 }
 
 void VideoArea::addInfomation(const QString &msg)

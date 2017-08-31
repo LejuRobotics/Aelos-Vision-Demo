@@ -59,6 +59,7 @@ private slots:
     void startExcuteShell();
     void onLowBattery();
     void onReadyPlayLowBattery();
+    void onCmdTimerout();
 
 private:
     QString m_client_ip;                  /**< 客户端IP */
@@ -87,15 +88,19 @@ private:
     int m_pingCount;
     QString m_shellName;
 
+    qint32 m_bufferReadSize;
+    qint32 m_bufferTotalSize;
+
+    QQueue<QByteArray> m_cmdQueue;
+    QTimer *m_cmdTimer;
+
     void WriteMsg(const QByteArray &msg);
     void WriteSerial(int val);
     void WriteSerial2(const QString &val);
     QString getLocalIP4Address() const;
     bool parseData(const QString &msg);
     void modifyNetworkFile(const QString &id, const QString &password);
-
-    qint32 m_bufferReadSize;
-    qint32 m_bufferTotalSize;
+    QString convertIntToHex(QString &outStr, int num);
 };
 
 #endif // SERVER_H
