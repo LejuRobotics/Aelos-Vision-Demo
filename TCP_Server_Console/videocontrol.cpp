@@ -314,7 +314,7 @@ void VideoControl::sendFrameOfHSV()
         if (G_Image_Display == "Original")
         {
             rectangle(rgb_mat, findRect, Scalar(0,255,0),2);
-            circle(rgb_mat, mc[max_pos], 6, Scalar(0,0,255)); //在重心坐标画圆
+            circle(rgb_mat, mc[max_pos], 3, Scalar(0,0,255)); //在重心坐标画圆
             m_displayImage = QImage((uchar*) rgb_mat.data, rgb_mat.cols, rgb_mat.rows,
                                 rgb_mat.cols*rgb_mat.channels(), QImage::Format_RGB888);
         }
@@ -322,7 +322,7 @@ void VideoControl::sendFrameOfHSV()
         {
             cvtColor(hsv_mat, hsv_mat, CV_GRAY2RGB);
             rectangle(hsv_mat, findRect, Scalar(0,255,0),2);
-            circle(hsv_mat, mc[max_pos], 6, Scalar(0,0,255)); //在重心坐标画圆
+            circle(hsv_mat, mc[max_pos], 3, Scalar(0,0,255)); //在重心坐标画圆
             m_displayImage = QImage((uchar*) hsv_mat.data, hsv_mat.cols, hsv_mat.rows,
                                 hsv_mat.cols*hsv_mat.channels(), QImage::Format_RGB888);
         }

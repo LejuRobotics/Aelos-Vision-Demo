@@ -35,6 +35,8 @@ double g_access_ratio = 0.4;
 int g_log_file_switch = 0;
 int g_turn_round_count = 9;
 int g_access_football_time = 1000;
+double g_right_kick_max_range = 0.72;
+double g_right_kick_min_range = 0.6;
 
 QString G_Image_Display = "Original";
 QString G_Image_Format = "HSV";
@@ -135,6 +137,8 @@ void readConfigFile()
     g_log_file_switch = iniReader.value("Debug/logFileSwitch").toInt();
     g_turn_round_count = iniReader.value("Debug/turnRoundCount").toInt();
     g_access_football_time = iniReader.value("Debug/accessFootballTime").toInt();
+    g_right_kick_max_range = iniReader.value("Debug/rightKickMaxRange").toDouble();
+    g_right_kick_min_range = iniReader.value("Debug/rightKickMinRange").toDouble();
 
     qDebug()<< "serialName: "<< g_serial_name << "\n"
             << "baudRate: " << g_baud_rate << "\n"
@@ -164,7 +168,9 @@ void readConfigFile()
             << "g_access_ratio: " << g_access_ratio << "\n"
             << "g_log_file_switch: " << g_log_file_switch << "\n"
             << "g_turn_round_count: " << g_turn_round_count << "\n"
-            << "g_access_football_time: " << g_access_football_time << "\n";
+            << "g_access_football_time: " << g_access_football_time << "\n"
+            << "g_right_kick_max_range: " << g_right_kick_max_range << "\n"
+            << "g_right_kick_min_range: " << g_right_kick_min_range << "\n";
 }
 
 

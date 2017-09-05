@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1168</width>
-    <height>768</height>
+    <height>799</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -60,7 +60,7 @@
       <x>10</x>
       <y>500</y>
       <width>311</width>
-      <height>111</height>
+      <height>131</height>
      </rect>
     </property>
     <property name="title">
@@ -98,66 +98,16 @@
       <bool>false</bool>
      </property>
     </widget>
-    <widget class="QLabel" name="brightness_label">
+    <widget class="QWidget" name="verticalLayoutWidget">
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>50</y>
-       <width>101</width>
-       <height>21</height>
+       <y>40</y>
+       <width>291</width>
+       <height>81</height>
       </rect>
      </property>
-     <property name="text">
-      <string>Brightness: 1.0</string>
-     </property>
-    </widget>
-    <widget class="LejuSlider" name="brightness_slider">
-     <property name="geometry">
-      <rect>
-       <x>120</x>
-       <y>50</y>
-       <width>171</width>
-       <height>19</height>
-      </rect>
-     </property>
-     <property name="minimum">
-      <number>100</number>
-     </property>
-     <property name="maximum">
-      <number>300</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-    <widget class="QLabel" name="contrast_label">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>80</y>
-       <width>101</width>
-       <height>21</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Contrast: 0</string>
-     </property>
-    </widget>
-    <widget class="LejuSlider" name="contrast_slider">
-     <property name="geometry">
-      <rect>
-       <x>120</x>
-       <y>80</y>
-       <width>171</width>
-       <height>19</height>
-      </rect>
-     </property>
-     <property name="maximum">
-      <number>200</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
+     <layout class="QVBoxLayout" name="verticalLayout"/>
     </widget>
    </widget>
    <widget class="QPushButton" name="connect_btn">
@@ -240,7 +190,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>manual</string>
+      <string>Manual</string>
      </property>
      <property name="checked">
       <bool>true</bool>
@@ -386,7 +336,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Right shoot</string>
+      <string>Right kick</string>
      </property>
     </widget>
     <widget class="QPushButton" name="action_btn_8">
@@ -435,7 +385,7 @@
       <x>330</x>
       <y>500</y>
       <width>561</width>
-      <height>221</height>
+      <height>251</height>
      </rect>
     </property>
     <property name="title">
@@ -463,210 +413,29 @@
        <x>10</x>
        <y>40</y>
        <width>541</width>
-       <height>101</height>
+       <height>131</height>
       </rect>
      </property>
      <property name="title">
       <string/>
      </property>
-     <widget class="QLabel" name="colorMinH_label">
+     <widget class="QWidget" name="gridLayoutWidget">
       <property name="geometry">
        <rect>
         <x>10</x>
         <y>10</y>
-        <width>61</width>
-        <height>16</height>
+        <width>521</width>
+        <height>111</height>
        </rect>
       </property>
-      <property name="text">
-       <string>MinH: 0</string>
-      </property>
-     </widget>
-     <widget class="LejuSlider" name="colorMinH_slider">
-      <property name="geometry">
-       <rect>
-        <x>80</x>
-        <y>10</y>
-        <width>171</width>
-        <height>21</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <number>180</number>
-      </property>
-      <property name="value">
-       <number>0</number>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
-     <widget class="QLabel" name="colorMaxH_label">
-      <property name="geometry">
-       <rect>
-        <x>270</x>
-        <y>10</y>
-        <width>61</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>MaxH: 180</string>
-      </property>
-     </widget>
-     <widget class="LejuSlider" name="colorMaxH_slider">
-      <property name="geometry">
-       <rect>
-        <x>350</x>
-        <y>10</y>
-        <width>171</width>
-        <height>21</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <number>180</number>
-      </property>
-      <property name="value">
-       <number>180</number>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
-     <widget class="QLabel" name="colorMinS_label">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>40</y>
-        <width>61</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>MinS: 100</string>
-      </property>
-     </widget>
-     <widget class="LejuSlider" name="colorMinS_slider">
-      <property name="geometry">
-       <rect>
-        <x>80</x>
-        <y>40</y>
-        <width>171</width>
-        <height>19</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <number>255</number>
-      </property>
-      <property name="value">
-       <number>100</number>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
-     <widget class="QLabel" name="colorMinV_label">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>70</y>
-        <width>61</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>MinV: 100</string>
-      </property>
-     </widget>
-     <widget class="LejuSlider" name="colorMinV_slider">
-      <property name="geometry">
-       <rect>
-        <x>80</x>
-        <y>70</y>
-        <width>171</width>
-        <height>19</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <number>255</number>
-      </property>
-      <property name="value">
-       <number>100</number>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
-     <widget class="QLabel" name="colorMaxS_label">
-      <property name="geometry">
-       <rect>
-        <x>270</x>
-        <y>40</y>
-        <width>61</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>MaxS: 255</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="colorMaxV_label">
-      <property name="geometry">
-       <rect>
-        <x>270</x>
-        <y>70</y>
-        <width>61</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>MaxV: 255</string>
-      </property>
-     </widget>
-     <widget class="LejuSlider" name="colorMaxS_slider">
-      <property name="geometry">
-       <rect>
-        <x>350</x>
-        <y>40</y>
-        <width>171</width>
-        <height>21</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <number>255</number>
-      </property>
-      <property name="value">
-       <number>255</number>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
-     <widget class="LejuSlider" name="colorMaxV_slider">
-      <property name="geometry">
-       <rect>
-        <x>350</x>
-        <y>70</y>
-        <width>171</width>
-        <height>21</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <number>255</number>
-      </property>
-      <property name="value">
-       <number>255</number>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
+      <layout class="QGridLayout" name="hsv_slider_layout"/>
      </widget>
     </widget>
     <widget class="QRadioButton" name="yuv_radio">
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>150</y>
+       <y>180</y>
        <width>41</width>
        <height>21</height>
       </rect>
@@ -678,56 +447,16 @@
       <bool>false</bool>
      </property>
     </widget>
-    <widget class="QGroupBox" name="groupBox_5">
+    <widget class="QWidget" name="verticalLayoutWidget_2">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>170</y>
+       <x>20</x>
+       <y>200</y>
        <width>261</width>
        <height>41</height>
       </rect>
      </property>
-     <property name="title">
-      <string/>
-     </property>
-     <widget class="QLabel" name="colorY_label">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>10</y>
-        <width>51</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Y: 128</string>
-      </property>
-     </widget>
-     <widget class="LejuSlider" name="colorY_slider">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
-      <property name="geometry">
-       <rect>
-        <x>80</x>
-        <y>10</y>
-        <width>171</width>
-        <height>19</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <number>255</number>
-      </property>
-      <property name="value">
-       <number>128</number>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
+     <layout class="QVBoxLayout" name="verticalLayout_2"/>
     </widget>
    </widget>
    <widget class="QTextEdit" name="textEdit">
@@ -744,9 +473,9 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>620</y>
+      <y>640</y>
       <width>311</width>
-      <height>101</height>
+      <height>111</height>
      </rect>
     </property>
     <property name="title">
@@ -820,11 +549,6 @@
    <class>LejuTbableWidget</class>
    <extends>QTableWidget</extends>
    <header>LejuTbableWidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>LejuSlider</class>
-   <extends>QSlider</extends>
-   <header>LejuSlider.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

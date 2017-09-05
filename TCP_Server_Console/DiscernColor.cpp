@@ -40,8 +40,8 @@ DiscernColor::DiscernColor(QObject *parent) : QThread(parent)
     m_bTurnRoundFinished = false;
 
     g_hsv_lower[0] = 0;
-    g_hsv_lower[1] = 100;
-    g_hsv_lower[2] = 100;
+    g_hsv_lower[1] = 0;
+    g_hsv_lower[2] = 0;
     g_hsv_upper[0] = 180;
     g_hsv_upper[1] = 255;
     g_hsv_upper[2] = 255;
@@ -1303,13 +1303,13 @@ void DiscernColor::adjustShootFootball()
         return;
     }
 
-    if (centerX < qRound(g_frame_width*0.62))
+    if (centerX < qRound(g_frame_width*g_right_kick_min_range))
     {
         setActionStatus(LeftShift);
         emit directionChanged(g_left_shift_command);
         moveMode = Access;
     }
-    else if (centerX > qRound(g_frame_width*0.72))
+    else if (centerX > qRound(g_frame_width*g_right_kick_max_range))
     {
         setActionStatus(RightShift);
         emit directionChanged(g_right_shift_command);

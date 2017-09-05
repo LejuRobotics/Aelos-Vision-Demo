@@ -38,5 +38,7 @@
 #include <Qmenu>
 #include <QDateTime>
 #include <QMessageBox>
+#include <QHBoxLayout>
+#include <QPushButton>
 
 #endif // PRECOMPILED_H
