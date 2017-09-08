@@ -100,6 +100,9 @@ private:
 
     QList<LejuSlider*> qsliderList;
 
+    QStringList sliderNameList;
+    QList<SliderGroupBox*> sliderGroupBoxList;
+
     PortSetupDialog *portSetupDialog;
     ScanIpDiaog *scanIpDialog;
     ServerWifiSettings *serverWifiDialog;
@@ -123,7 +126,6 @@ private:
     QTimer *m_sliderTimer;
     QString m_command;
 
-    QVector<QRect> m_markRectVec;
 
     void readConfigFile();
     void saveConfigFile();

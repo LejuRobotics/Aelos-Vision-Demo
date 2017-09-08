@@ -37,7 +37,6 @@ VideoArea::VideoArea(QWidget *parent) :
 
     for(int i=0; i<btnList.size(); i++)
     {
-        btnList[i]->setEnabled(false);
         if (btnList[i]->text() == "Move on")
         {
             action_btn_group->addButton(btnList[i],100);
@@ -53,10 +52,7 @@ VideoArea::VideoArea(QWidget *parent) :
     }
     connect(action_btn_group, SIGNAL(buttonClicked(int)), this, SLOT(onActionButtonGroupClicked(int)));
 
-    ui->record_btn->setEnabled(false);
-    ui->reset_btn->setEnabled(false);
-    ui->auto_radio->setEnabled(false);
-    ui->manual_radio->setEnabled(false);
+    ui->groupBox_3->setEnabled(false);
 
     connect(ui->action_Port, SIGNAL(triggered(bool)), this, SLOT(onActioPortClicked()));
     connect(ui->action_Area, SIGNAL(toggled(bool)), this, SLOT(onActionAreaViewClicked(bool)));
@@ -86,23 +82,52 @@ VideoArea::VideoArea(QWidget *parent) :
     connectionBox = new ConnectionBox(this);
     connect(connectionBox, SIGNAL(startConnectTo(QString)), this, SLOT(onStartConnectTo(QString)));
 
-    ui->brightness_slider->setProperty("name", "Brightness");
-    ui->contrast_slider->setProperty("name", "Contrast");
-    ui->colorY_slider->setProperty("name", "YUV_Y");
-    ui->colorMinH_slider->setProperty("name", "MinH");
-    ui->colorMinS_slider->setProperty("name", "MinS");
-    ui->colorMinV_slider->setProperty("name", "MinV");
-    ui->colorMaxH_slider->setProperty("name", "MaxH");
-    ui->colorMaxS_slider->setProperty("name", "MaxS");
-    ui->colorMaxV_slider->setProperty("name", "MaxV");
+    sliderNameList << "Brightness" << "Contrast" << "YUV_Y" << "MinH"
+                      << "MinS" << "MinV" << "MaxH" << "MaxS" << "MaxV";
 
-    qsliderList << ui->brightness_slider << ui->contrast_slider << ui->colorY_slider
-                << ui->colorMinH_slider << ui->colorMinS_slider << ui->colorMinV_slider
-                << ui->colorMaxH_slider << ui->colorMaxS_slider << ui->colorMaxV_slider;
-
-    foreach (LejuSlider *obj, qsliderList) {
-        connect(obj, SIGNAL(sliderValueChanged(int)), this, SLOT(onSliderValueChanged(int)));
+    for (int i=0; i<sliderNameList.size(); ++i)
+    {
+        sliderGroupBoxList << new SliderGroupBox(this);
+        sliderGroupBoxList[i]->setName(sliderNameList[i]);
+        if (i == 0)
+        {
+            sliderGroupBoxList[i]->setType("float");
+            sliderGroupBoxList[i]->setRange(10,30);
+        }
+        else if (i == 1)
+        {
+            sliderGroupBoxList[i]->setRange(0,120);
+        }
+        else if (i == 3 || i == 6)
+        {
+            sliderGroupBoxList[i]->setRange(0,180);
+        }
+        else
+        {
+            sliderGroupBoxList[i]->setRange(0,255);
+        }
+        connect(sliderGroupBoxList[i], SIGNAL(sliderValueChanged(int)), this, SLOT(onSliderValueChanged(int)));
     }
+    ui->verticalLayout->addWidget(sliderGroupBoxList[0]);
+    ui->verticalLayout->addWidget(sliderGroupBoxList[1]);
+    ui->verticalLayout_2->addWidget(sliderGroupBoxList[2]);
+
+    ui->hsv_slider_layout->addWidget(sliderGroupBoxList[3],0,0,1,1);
+    ui->hsv_slider_layout->addWidget(sliderGroupBoxList[6],0,1,1,1);
+    ui->hsv_slider_layout->addWidget(sliderGroupBoxList[4],1,0,1,1);
+    ui->hsv_slider_layout->addWidget(sliderGroupBoxList[7],1,1,1,1);
+    ui->hsv_slider_layout->addWidget(sliderGroupBoxList[5],2,0,1,1);
+    ui->hsv_slider_layout->addWidget(sliderGroupBoxList[8],2,1,1,1);
+
+    sliderGroupBoxList[2]->setValue(128);
+    sliderGroupBoxList[3]->setValue(0);
+    sliderGroupBoxList[4]->setValue(0);
+    sliderGroupBoxList[5]->setValue(0);
+    sliderGroupBoxList[6]->setValue(255);
+    sliderGroupBoxList[7]->setValue(255);
+    sliderGroupBoxList[8]->setValue(255);
+
+    sliderGroupBoxList[2]->setEnabled(false);
 
     parameterSettingDialog = new ParameterSettingDialog(this);
     parameterSettingDialog->hide();
@@ -154,7 +179,7 @@ VideoArea::~VideoArea()
 
 void VideoArea::WriteData(const QByteArray &msg)
 {
-    if (msg.isEmpty() && !m_long_socket->isOpen())
+    if (msg.isEmpty() || !m_long_socket->isOpen())
         return;
 
     QByteArray outBlock;
@@ -202,8 +227,10 @@ void VideoArea::onStartConnectTo(const QString &ip)
     }
 
     ui->connect_btn->setText(tr("Disconnect"));
+    ui->groupBox_3->setEnabled(true);
     ui->record_btn->setEnabled(true);
     ui->reset_btn->setEnabled(true);
+    ui->again_btn->setEnabled(true);
     ui->auto_radio->setEnabled(true);
     ui->manual_radio->setEnabled(true);
     for (int i=0; i<btnList.size(); ++i)
@@ -373,12 +400,12 @@ void VideoArea::onLongSocketReadyRead()
                                .arg(maxWidth)
                                .arg(ui->tableWidget->lastType())
                                .arg(ui->tableWidget->lastTurn())
-                               .arg(ui->colorMinH_slider->value())
-                               .arg(ui->colorMinS_slider->value())
-                               .arg(ui->colorMinV_slider->value())
-                               .arg(ui->colorMaxH_slider->value())
-                               .arg(ui->colorMaxS_slider->value())
-                               .arg(ui->colorMaxV_slider->value());
+                               .arg(sliderGroupBoxList[3]->value())
+                               .arg(sliderGroupBoxList[4]->value())
+                               .arg(sliderGroupBoxList[5]->value())
+                               .arg(sliderGroupBoxList[6]->value())
+                               .arg(sliderGroupBoxList[7]->value())
+                               .arg(sliderGroupBoxList[8]->value());
                        WriteData(cmd.toUtf8());
                    }
                 }
@@ -389,18 +416,12 @@ void VideoArea::onLongSocketReadyRead()
                 QStringList valList = strVal.split(",");
                 if (valList.length() == 6)
                 {
-                    ui->colorMinH_slider->SetValue(valList[0].toInt());
-                    ui->colorMinH_label->setText(QString("MinH: %1").arg(valList[0].toInt()));
-                    ui->colorMinS_slider->SetValue(valList[1].toInt());
-                    ui->colorMinS_label->setText(QString("MinS: %1").arg(valList[1].toInt()));
-                    ui->colorMinV_slider->SetValue(valList[2].toInt());
-                    ui->colorMinV_label->setText(QString("MinV: %1").arg(valList[2].toInt()));
-                    ui->colorMaxH_slider->SetValue(valList[3].toInt());
-                    ui->colorMaxH_label->setText(QString("MaxH: %1").arg(valList[3].toInt()));
-                    ui->colorMaxS_slider->SetValue(valList[4].toInt());
-                    ui->colorMaxS_label->setText(QString("MaxS: %1").arg(valList[4].toInt()));
-                    ui->colorMaxV_slider->SetValue(valList[5].toInt());
-                    ui->colorMaxV_label->setText(QString("MaxV: %1").arg(valList[5].toInt()));
+                    sliderGroupBoxList[3]->setValue(valList[0].toInt(), true);
+                    sliderGroupBoxList[4]->setValue(valList[1].toInt(), true);
+                    sliderGroupBoxList[5]->setValue(valList[2].toInt(), true);
+                    sliderGroupBoxList[6]->setValue(valList[3].toInt(), true);
+                    sliderGroupBoxList[7]->setValue(valList[4].toInt(), true);
+                    sliderGroupBoxList[8]->setValue(valList[5].toInt(), true);
                 }
             }
             else if (readData.startsWith("Reach.Target"))
@@ -439,10 +460,9 @@ void VideoArea::onSocketDisconnect()
     m_isConnected = false;
 
     m_timer->stop();
-    if (!ui->manual_radio->isChecked())
-    {
-        ui->manual_radio->setChecked(true);
-    }
+    ui->groupBox_3->setEnabled(false);
+    ui->again_btn->setEnabled(false);
+    ui->manual_radio->setChecked(true);
     for (int i=0; i<btnList.size(); ++i)
     {
         btnList[i]->setEnabled(false);
@@ -698,13 +718,17 @@ void VideoArea::on_record_btn_clicked()
  */
 
 void VideoArea::on_reset_btn_clicked()
-{
-    ui->record_btn->setEnabled(true);
+{    
     QString cmd("RESET");
     WriteData(cmd.toUtf8());
 
+    ui->record_btn->setEnabled(true);
+    ui->again_btn->setEnabled(true);
     ui->manual_radio->setChecked(true);
-    on_manual_radio_clicked(true);
+    for (int i=0; i<btnList.size(); ++i)
+    {
+        btnList[i]->setEnabled(true);
+    }
     for (int i=ui->tableWidget->rowCount()-1; i>-1; --i)
     {
         ui->tableWidget->removeRow(i);
@@ -848,8 +872,7 @@ void VideoArea::on_yuv_radio_toggled(bool checked)
     if (checked)
     {
         ui->record_btn->setEnabled(false);
-        ui->colorY_label->setEnabled(true);
-        ui->colorY_slider->setEnabled(true);
+        sliderGroupBoxList[2]->setEnabled(true);
         ui->hsvGroupBox->setEnabled(false);
 
         QString msg("set Image.Format=YUV");
@@ -866,70 +889,60 @@ void VideoArea::on_hsv_radio_toggled(bool checked)
     if (checked)
     {
         ui->record_btn->setEnabled(true);
-        ui->colorY_label->setEnabled(false);
-        ui->colorY_slider->setEnabled(false);
+        sliderGroupBoxList[2]->setEnabled(false);
         ui->hsvGroupBox->setEnabled(true);
         mark_label->cleanRect();
 
         QString msg = QString("set Image.Format=HSV,%1,%2,%3,%4,%5,%6")
-                .arg(ui->colorMinH_slider->value())
-                .arg(ui->colorMinS_slider->value())
-                .arg(ui->colorMinV_slider->value())
-                .arg(ui->colorMaxH_slider->value())
-                .arg(ui->colorMaxS_slider->value())
-                .arg(ui->colorMaxV_slider->value());
+                .arg(sliderGroupBoxList[3]->value())
+                .arg(sliderGroupBoxList[4]->value())
+                .arg(sliderGroupBoxList[5]->value())
+                .arg(sliderGroupBoxList[6]->value())
+                .arg(sliderGroupBoxList[7]->value())
+                .arg(sliderGroupBoxList[8]->value());
         WriteData(msg.toUtf8());
     }
 }
 
 void VideoArea::onSliderValueChanged(int value)
 {
-    LejuSlider *obj = qobject_cast<LejuSlider*>(sender());
-    QString name = obj->property("name").toString();
+    SliderGroupBox *obj = qobject_cast<SliderGroupBox*>(sender());
+    QString name = obj->getName();
     if (name == "Brightness")
     {
-        double brightness = value/100.0;
-        ui->brightness_label->setText(QString("Brightness: %1").arg(brightness));
+        double brightness = value/10.0;
         m_command = QString("set Color.Brightness=%1").arg(brightness);
     }
     else if (name == "Contrast")
     {
-        ui->contrast_label->setText(QString("Contrast: %1").arg(value));
         m_command = QString("set Color.Contrast=%1").arg(value);
     }
     else if (name == "YUV_Y")
     {
-        ui->colorY_label->setText(QString("Y: %1").arg(value));
         m_command = QString("set Color.Channel.Y=%1").arg(value);
     }
     else if (name == "MinH")
     {
-        ui->colorMinH_label->setText(QString("MinH: %1").arg(value));
         m_command = QString("set HSV.Channel.MinH=%1").arg(value);
     }
     else if (name == "MinS")
     {
-        ui->colorMinS_label->setText(QString("MinS: %1").arg(value));
         m_command = QString("set HSV.Channel.MinS=%1").arg(value);
     }
     else if (name == "MinV")
     {
-        ui->colorMinV_label->setText(QString("MinV: %1").arg(value));
         m_command = QString("set HSV.Channel.MinV=%1").arg(value);
     }
     else if (name == "MaxH")
     {
-        ui->colorMaxH_label->setText(QString("MaxH: %1").arg(value));
         m_command = QString("set HSV.Channel.MaxH=%1").arg(value);
     }
     else if (name == "MaxS")
     {
-        ui->colorMaxS_label->setText(QString("MaxS: %1").arg(value));
         m_command = QString("set HSV.Channel.MaxS=%1").arg(value);
     }
     else if (name == "MaxV")
     {
-        ui->colorMaxV_label->setText(QString("MaxV: %1").arg(value));
         m_command = QString("set HSV.Channel.MaxV=%1").arg(value);
     }
 

@@ -71,7 +71,8 @@ extern double g_access_ratio;             /**< 当前标记框的宽度大于记
 extern int g_log_file_switch;             /**< 是否保存程序打印日志，0否，1是 */
 extern int g_turn_round_count;            /**< 如果设置机器人支持返回初始目标，这个值是机器人到达最后一个目标后进行持续右转直至转身180度的转动次数 */
 extern int g_access_football_time;        /**< 目前通过弯腰动作机器人无法看到自己的脚，这个是机器人在识别到足球的最近距离走到足球能够进行射门需要的行走时长 */
-
+extern double g_right_kick_max_range;     /**< 调整右踢位置范围的上界 */
+extern double g_right_kick_min_range;     /**< 调整右踢位置范围的下界 */
 
 /*************************************************************
  * 声明全局变量，方便多个文件中使用
