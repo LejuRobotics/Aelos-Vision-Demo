@@ -49,9 +49,8 @@ extern int g_frame_width;                 /**< 图片宽度 */
 extern int g_frame_height;                /**< 图片高度 */
 extern int g_frame_quality;               /**< 图片质量 */
 extern double g_horizontal_ratio;         /**< 中间区域的划分比例，值越大，区域越小 */
-extern double g_object_ratio;             /**< 物体标记框占中间区域的比例,值越大，越靠近中间区域 */
 extern double g_rotation_range;           /**< 控制标记框的x坐标位置在这个比例位置内用小幅度旋转，否则用大幅度 */
-extern int g_time_count;                  /**< 完成一个动作以后的延迟时间 */
+extern int g_delay_time;                  /**< 完成一个动作以后的延迟时间 */
 extern int g_forward_command;             /**< 快走的指令 */
 extern int g_quick_back_command;          /**< 快退的指令 */
 extern int g_left_s_command;              /**< 左转指令(小幅度) */
@@ -73,6 +72,7 @@ extern int g_turn_round_count;            /**< 如果设置机器人支持返回
 extern int g_access_football_time;        /**< 目前通过弯腰动作机器人无法看到自己的脚，这个是机器人在识别到足球的最近距离走到足球能够进行射门需要的行走时长 */
 extern double g_right_kick_max_range;     /**< 调整右踢位置范围的上界 */
 extern double g_right_kick_min_range;     /**< 调整右踢位置范围的下界 */
+extern int g_obstacle_turn_count;
 
 /*************************************************************
  * 声明全局变量，方便多个文件中使用

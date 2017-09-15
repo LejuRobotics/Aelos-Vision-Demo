@@ -34,7 +34,9 @@ public:
         AccessRatio,
         DelayCount,
         QuickCount,
-        SlowCount
+        SlowCount,
+        ObstacleTurnCount,
+        GobackTurnCount
     };
 
     void setResolution(int w, int h);
@@ -63,6 +65,8 @@ private:
     int m_delayCount;
     int m_quickCount;
     int m_slowCount;
+    int m_obstacleTurnCount;
+    int m_gobackTurnCount;
 };
 
 #endif // PARAMETERSETTINGDIALOG_H
