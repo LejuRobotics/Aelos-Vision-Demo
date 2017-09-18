@@ -208,9 +208,11 @@ void Server::onSocketRead()
                 retMsg.append(QString("Image.Quality=%1\r\n").arg(g_frame_quality));
                 retMsg.append(QString("Arrive.Ratio=%1\r\n").arg(g_arrive_ratio));
                 retMsg.append(QString("Access.Ratio=%1\r\n").arg(g_access_ratio));
-                retMsg.append(QString("Delay.Count=%1\r\n").arg(g_time_count));
+                retMsg.append(QString("Delay.Count=%1\r\n").arg(g_delay_time));
                 retMsg.append(QString("Quick.Count=%1\r\n").arg(g_far_move_on_time));
                 retMsg.append(QString("Slow.Count=%1\r\n").arg(g_near_move_on_time));
+                retMsg.append(QString("Obstacle.Turn.Count=%1\r\n").arg(g_obstacle_turn_count));
+                retMsg.append(QString("Goback.Turn.Count=%1\r\n").arg(g_turn_round_count));
                 retMsg.append(QString("Open %1 %2 !\r\n").arg(g_serial_name).arg(isOPenSerial ? "successfully" : "failed"));
                 retMsg.append("End\r\n");
                 WriteMsg(retMsg.toUtf8()); //连接成功，返回信息
@@ -420,6 +422,7 @@ bool Server::parseData(const QString &msg)
     }
     else if (msg.startsWith("start set param"))
     {
+        QSettings iniReader("setup.ini",QSettings::IniFormat);
         QStringList msgList = msg.split("\r\n");
         foreach (const QString &item, msgList) {
             if (item.startsWith("Image.Quality"))
@@ -429,43 +432,64 @@ bool Server::parseData(const QString &msg)
                 {
                     g_frame_quality = -1;
                 }
+                iniReader.setValue("Debug/frameQuality", g_frame_quality);
             }
             else if (item.startsWith("Center.Ratio"))
             {
                 g_horizontal_ratio = item.mid(item.indexOf("=")+1).toDouble();
+                iniReader.setValue("Debug/horizontalRatio", g_horizontal_ratio);
             }
             else if (item.startsWith("Turn.Ratio"))
             {
                 g_rotation_range = item.mid(item.indexOf("=")+1).toDouble();
+                iniReader.setValue("Debug/rotationRange", g_rotation_range);
             }
             else if (item.startsWith("Arrive.Ratio"))
             {
                 g_arrive_ratio = item.mid(item.indexOf("=")+1).toDouble();
+                iniReader.setValue("Debug/arriveRatio", g_arrive_ratio);
             }
             else if (item.startsWith("Access.Ratio"))
             {
                 g_access_ratio = item.mid(item.indexOf("=")+1).toDouble();
+                iniReader.setValue("Debug/accessRatio", g_access_ratio);
             }
             else if (item.startsWith("Delay.Count"))
             {
-                g_time_count = item.mid(item.indexOf("=")+1).toInt();
+                g_delay_time = item.mid(item.indexOf("=")+1).toInt();
+                iniReader.setValue("Debug/delayCount", g_delay_time);
             }
             else if (item.startsWith("Quick.Count"))
             {
                 g_far_move_on_time = item.mid(item.indexOf("=")+1).toInt();
+                iniReader.setValue("Debug/moveOnFarTime", g_far_move_on_time);
             }
             else if (item.startsWith("Slow.Count"))
             {
                 g_near_move_on_time = item.mid(item.indexOf("=")+1).toInt();
+                iniReader.setValue("Debug/moveOnNearTime", g_near_move_on_time);
             }
             else if (item.startsWith("Camera.Resolution"))
             {
                 QStringList msgList = item.mid(item.indexOf("=")+1).split("x");
                 if (msgList.size() == 2)
                 {
-                    videoControl->setCameraResolution(msgList[0].toInt(),msgList[1].toInt());
-                    return true;
+                    g_frame_width = msgList[0].toInt();
+                    g_frame_height = msgList[1].toInt();
+                    videoControl->setCameraResolution(g_frame_width,g_frame_height);
+                    iniReader.setValue("Resolution/width", g_frame_width);
+                    iniReader.setValue("Resolution/height", g_frame_height);
                 }
+            }
+            else if (item.startsWith("Obstacle.Turn.Count"))
+            {
+                g_obstacle_turn_count = item.mid(item.indexOf("=")+1).toInt();
+                iniReader.setValue("Debug/obstacleTurnCount", g_obstacle_turn_count);
+            }
+            else if (item.startsWith("Goback.Turn.Count"))
+            {
+                g_turn_round_count = item.mid(item.indexOf("=")+1).toInt();
+                iniReader.setValue("Debug/turnRoundCount", g_turn_round_count);
             }
         }
         return true;

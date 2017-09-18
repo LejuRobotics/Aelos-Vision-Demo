@@ -336,6 +336,16 @@ void VideoArea::onLongSocketReadyRead()
                         int val = item.mid(item.indexOf("=")+1).toInt();
                         parameterSettingDialog->setValue(ParameterSettingDialog::SlowCount, val);
                     }
+                    else if (item.startsWith("Obstacle.Turn.Count"))
+                    {
+                        int val = item.mid(item.indexOf("=")+1).toInt();
+                        parameterSettingDialog->setValue(ParameterSettingDialog::ObstacleTurnCount, val);
+                    }
+                    else if (item.startsWith("Goback.Turn.Count"))
+                    {
+                        int val = item.mid(item.indexOf("=")+1).toInt();
+                        parameterSettingDialog->setValue(ParameterSettingDialog::GobackTurnCount, val);
+                    }
                 }
             }
 

@@ -240,7 +240,7 @@ void DiscernColor::setActionStatus(DiscernColor::ActionStatus status)
     actionStatus = status;
     if (status == Finished)
     {
-        QTimer::singleShot(g_time_count, this, SLOT(setActionReady()));
+        QTimer::singleShot(g_delay_time, this, SLOT(setActionReady()));
     }
     else
     {
@@ -1208,7 +1208,8 @@ void DiscernColor::obstacleAvoidance()
 
     obstacleCount++;
     qDebug()<< "----======start obstacle avoidance: " << obstacleCount;
-    if (obstacleCount <= 3) //避障执行的前两次动作，转向
+    int totalCount = g_obstacle_turn_count*2+1;
+    if (obstacleCount <= (totalCount/2)) //转向
     {
         if(turn == 0) //左边
         {
@@ -1221,12 +1222,12 @@ void DiscernColor::obstacleAvoidance()
             emit directionChanged(g_right_l_command);
         }
     }
-    else if (obstacleCount == 4) //避障执行的第三次动作,前进
+    else if (obstacleCount == (totalCount/2+1)) //前进
     {
         setActionStatus(QuickWalk);
         emit startMoveOn(g_far_move_on_time);
     }
-    else if (obstacleCount > 4 && obstacleCount <= 7) //恢复转向
+    else if (obstacleCount > (totalCount/2+1)) //恢复转向
     {
         if(turn == 0)
         {
@@ -1239,7 +1240,7 @@ void DiscernColor::obstacleAvoidance()
             emit directionChanged(g_left_l_command);
         }
 
-        if (obstacleCount == 7)
+        if (obstacleCount == totalCount)
         {
             obstacleCount = 0;
             moveMode = Track;
@@ -1258,7 +1259,7 @@ void DiscernColor::obstacleAvoidance()
 }
 
 void DiscernColor::shootFootball()
-{    
+{
     m_shootActionsFinishedCount++;
     qDebug()<< "----------------=============start shoot !!!"<<m_shootActionsFinishedCount;
     if (m_shootActionsFinishedCount  == 1)

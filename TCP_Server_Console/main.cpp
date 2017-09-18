@@ -13,9 +13,8 @@ int g_frame_width = 640;
 int g_frame_height = 480;
 int g_frame_quality = 50;
 double g_horizontal_ratio = 0.4;
-double g_object_ratio = 0.6;
 double g_rotation_range = 0.25;
-int g_time_count = 1500;
+int g_delay_time = 1500;
 int g_forward_command = 1;
 int g_quick_back_command = 2;
 int g_left_s_command = 3;
@@ -37,6 +36,7 @@ int g_turn_round_count = 9;
 int g_access_football_time = 1000;
 double g_right_kick_max_range = 0.72;
 double g_right_kick_min_range = 0.6;
+int g_obstacle_turn_count = 3;
 
 QString G_Image_Display = "Original";
 QString G_Image_Format = "HSV";
@@ -114,9 +114,8 @@ void readConfigFile()
     g_broadcast_port = iniReader.value("Port/udpPort").toInt();
     g_frame_quality = iniReader.value("Debug/frameQuality").toInt();
     g_horizontal_ratio = iniReader.value("Debug/horizontalRatio").toDouble();
-    g_object_ratio = iniReader.value("Debug/objectRatio").toDouble();
     g_rotation_range = iniReader.value("Debug/rotationRange").toDouble();
-    g_time_count = iniReader.value("Debug/timeCount").toInt();
+    g_delay_time = iniReader.value("Debug/delayCount").toInt();
     g_forward_command = iniReader.value("Debug/forwardCommand").toInt();
     g_quick_back_command = iniReader.value("Debug/quickBackCommand").toInt();
     g_left_s_command = iniReader.value("Debug/sLeftCommand").toInt();
@@ -139,6 +138,7 @@ void readConfigFile()
     g_access_football_time = iniReader.value("Debug/accessFootballTime").toInt();
     g_right_kick_max_range = iniReader.value("Debug/rightKickMaxRange").toDouble();
     g_right_kick_min_range = iniReader.value("Debug/rightKickMinRange").toDouble();
+    g_obstacle_turn_count = iniReader.value("Debug/obstacleTurnCount").toInt();
 
     qDebug()<< "serialName: "<< g_serial_name << "\n"
             << "baudRate: " << g_baud_rate << "\n"
@@ -147,9 +147,8 @@ void readConfigFile()
             << "g_broadcast_port: " << g_broadcast_port << "\n"
             << "g_frame_quality: " << g_frame_quality << "\n"
             << "g_horizontal_ratio: " << g_horizontal_ratio << "\n"
-            << "g_object_ratio: " << g_object_ratio << "\n"
             << "g_rotation_range: " << g_rotation_range << "\n"
-            << "g_time_count: " << g_time_count << "\n"
+            << "g_delay_time: " << g_delay_time << "\n"
             << "g_forward_command: " << g_forward_command << "\n"
             << "g_quick_back_command: " << g_quick_back_command << "\n"
             << "g_left_s_command: " << g_left_s_command << "\n"
@@ -170,7 +169,8 @@ void readConfigFile()
             << "g_turn_round_count: " << g_turn_round_count << "\n"
             << "g_access_football_time: " << g_access_football_time << "\n"
             << "g_right_kick_max_range: " << g_right_kick_max_range << "\n"
-            << "g_right_kick_min_range: " << g_right_kick_min_range << "\n";
+            << "g_right_kick_min_range: " << g_right_kick_min_range << "\n"
+            << "g_obstacle_turn_count: " << g_obstacle_turn_count << "\n";
 }
 
 

@@ -89,6 +89,12 @@ void ParameterSettingDialog::setValue(ParameterSettingDialog::Type type, const Q
     case SlowCount:
         ui->slow_edit->setText(val.toString());
         break;
+    case ObstacleTurnCount:
+        ui->turnCount_edit->setText(val.toString());
+        break;
+    case GobackTurnCount:
+        ui->turnRoundCount_edit->setText(val.toString());
+        break;
     default:
         break;
     }
@@ -105,6 +111,8 @@ void ParameterSettingDialog::init()
     m_delayCount = ui->delay_edit->text().toInt();
     m_quickCount = ui->quick_edit->text().toInt();
     m_slowCount = ui->slow_edit->text().toInt();
+    m_obstacleTurnCount = ui->turnCount_edit->text().toInt();
+    m_gobackTurnCount = ui->turnRoundCount_edit->text().toInt();
 }
 
 void ParameterSettingDialog::on_buttonBox_accepted()
@@ -121,10 +129,13 @@ void ParameterSettingDialog::on_buttonBox_accepted()
                   "Delay.Count=%6\r\n"
                   "Quick.Count=%7\r\n"
                   "Slow.Count=%8\r\n"
-                  "Camera.Resolution=%9\r\n")
+                  "Camera.Resolution=%9\r\n"
+                  "Obstacle.Turn.Count=%10\r\n"
+                  "Goback.Turn.Count=%11\r\n")
             .arg(m_imageQuality).arg(m_centerRatio).arg(m_turnRatio)
             .arg(m_arriveRatio).arg(m_accessRatio).arg(m_delayCount)
-            .arg(m_quickCount).arg(m_slowCount).arg(m_resolution);
+            .arg(m_quickCount).arg(m_slowCount).arg(m_resolution)
+            .arg(m_obstacleTurnCount).arg(m_gobackTurnCount);
 
     emit sendData(msg.toUtf8());
     emit debugViewChanged(m_centerRatio,m_turnRatio);
@@ -141,5 +152,7 @@ void ParameterSettingDialog::on_buttonBox_rejected()
     ui->delay_edit->setText(QString::number(m_delayCount));
     ui->quick_edit->setText(QString::number(m_quickCount));
     ui->slow_edit->setText(QString::number(m_slowCount));
+    ui->turnCount_edit->setText(QString::number(m_obstacleTurnCount));
+    ui->turnRoundCount_edit->setText(QString::number(m_gobackTurnCount));
 }
 

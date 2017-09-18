@@ -99,8 +99,6 @@ void VideoControl::setCameraResolution(int w, int h)
     if (w != g_frame_width)
     {
         isPause = true;
-        g_frame_width = w;
-        g_frame_height = h;
         if (w > 320 && g_frame_quality > 90)
         {
             g_frame_quality = -1;
