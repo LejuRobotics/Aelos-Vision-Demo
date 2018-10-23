@@ -41,7 +41,7 @@
     - `make`
 
 - Client
-    - 在 QT-Creator 中打开 `pc-client/ColorSegmentation.pro` 编译
+    - 在 QT-Creator 中打开 `pc-client/ColorSegmentation.pro`编译
 
 ## 使用
 
@@ -51,3 +51,4 @@
 
 ## QA
 
+欢迎在 [issues](https://github.com/LejuRobotics/Aelos-Vision-Demo/issues) 讨论
