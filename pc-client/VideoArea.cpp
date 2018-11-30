@@ -22,8 +22,8 @@ VideoArea::VideoArea(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::VideoArea)
 {
-    ui->setupUi(this);
-
+    ui->setupUi(this);    
+//    ui->centralwidget->setStyleSheet("background-color:#797979;");
     test_label = new TestLabel(ui->centralwidget);
     test_label->hide();
     mark_label = new PaintLabel(ui->centralwidget);

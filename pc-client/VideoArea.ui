@@ -103,7 +103,7 @@
       <rect>
        <x>10</x>
        <y>40</y>
-       <width>461</width>
+       <width>471</width>
        <height>81</height>
       </rect>
      </property>
@@ -374,24 +374,6 @@
       <bool>true</bool>
      </property>
     </widget>
-    <zorder>record_btn</zorder>
-    <zorder>reset_btn</zorder>
-    <zorder>auto_radio</zorder>
-    <zorder>manual_radio</zorder>
-    <zorder>action_btn_1</zorder>
-    <zorder>action_btn_2</zorder>
-    <zorder>action_btn_3</zorder>
-    <zorder>action_btn_4</zorder>
-    <zorder>action_btn_5</zorder>
-    <zorder>action_btn_6</zorder>
-    <zorder>action_btn_MoveOn</zorder>
-    <zorder>action_btn_MoveStop</zorder>
-    <zorder>action_btn_7</zorder>
-    <zorder>action_btn_9</zorder>
-    <zorder>action_btn_10</zorder>
-    <zorder>action_btn_8</zorder>
-    <zorder>again_btn</zorder>
-    <zorder>verticalLayoutWidget</zorder>
    </widget>
    <widget class="LejuTbableWidget" name="tableWidget">
     <property name="geometry">
@@ -493,6 +475,13 @@
      </rect>
     </property>
    </widget>
+   <zorder>connect_btn</zorder>
+   <zorder>video_label</zorder>
+   <zorder>groupBox_4</zorder>
+   <zorder>format_groupBox</zorder>
+   <zorder>groupBox_3</zorder>
+   <zorder>tableWidget</zorder>
+   <zorder>textEdit</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
