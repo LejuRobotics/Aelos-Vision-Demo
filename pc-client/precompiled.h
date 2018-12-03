@@ -40,5 +40,6 @@
 #include <QMessageBox>
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <QToolButton>
 
 #endif // PRECOMPILED_H
