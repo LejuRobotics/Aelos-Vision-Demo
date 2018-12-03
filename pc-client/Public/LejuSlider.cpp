@@ -130,27 +130,37 @@ SliderGroupBox::SliderGroupBox(QWidget *parent) :
                                  "margin: -6px 0px -6px 0px; border-radius: 8px; border: 1px solid #FFB75D;}"
                                  "QSlider::add-page:horizontal{background-color: #FFFFFF; border-radius: 2px;}"
                                  "QSlider::sub-page:horizontal{background-color: #FF930D; border-radius: 2px;}");
+    slider->setFixedSize(m_nWight, m_nHeight);
+
     valueLabel = new QLabel("0",this);
-    valueLabel->setFixedSize(m_nWight,m_nHeight);
+    valueLabel->setFixedSize(m_nWight * 0.5, m_nHeight*0.5);
     valueLabel->setAlignment(Qt::AlignCenter);
     valueLabel->setStyleSheet("background-color: #FFFFFF; color: #000000; font-size: 12px; border: 1px solid #666666;");
     plusBtn = new LejuPushButton("+",this);
     plusBtn->setPressedAndHoldEnable(true);
-    plusBtn->setFixedSize(m_nHeight,m_nHeight);
+    plusBtn->setFixedSize(m_nHeight*0.5, m_nHeight * 0.5);
     minusBtn = new LejuPushButton("-",this);
     minusBtn->setPressedAndHoldEnable(true);
-    minusBtn->setFixedSize(m_nHeight,m_nHeight);
+    minusBtn->setFixedSize(m_nHeight * 0.5, m_nHeight * 0.5);
+
     btnLayout = new QHBoxLayout;
     btnLayout->addWidget(minusBtn);
     btnLayout->addWidget(valueLabel);
     btnLayout->addWidget(plusBtn);
-    btnLayout->setMargin(0);
-    btnLayout->setSpacing(0);
+//    btnLayout->SetFixedSize(m_nWight, m_nHeight);
+    btnLayout->setMargin(1);
+    btnLayout->setSpacing(1);
+
+    sliderValueLayout = new QVBoxLayout(this);
+    sliderValueLayout->addWidget(slider);
+    sliderValueLayout->addLayout(btnLayout);
+    sliderValueLayout->addStretch(0);
 
     mainLayout = new QHBoxLayout(this);
     mainLayout->addWidget(nameLabel);
-    mainLayout->addWidget(slider);
-    mainLayout->addLayout(btnLayout);
+//    mainLayout->addWidget(slider);
+//    mainLayout->addLayout(btnLayout);
+    mainLayout->addLayout(sliderValueLayout);
     mainLayout->setMargin(0);
     mainLayout->setSpacing(8);
 

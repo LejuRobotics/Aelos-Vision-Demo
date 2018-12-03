@@ -92,6 +92,7 @@ private:
     LejuPushButton *minusBtn;
     QHBoxLayout *btnLayout;
     QHBoxLayout *mainLayout;
+    QVBoxLayout *sliderValueLayout;
     bool isEntered;
     bool isBlock;
 };
