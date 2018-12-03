@@ -119,31 +119,33 @@ SliderGroupBox::SliderGroupBox(QWidget *parent) :
     QWidget(parent),m_type("Int"),isEntered(false),isBlock(false)
 {
     nameLabel = new QLabel(this);
-    nameLabel->setFixedSize(m_nWight+20,m_nHeight);
+    nameLabel->setFixedSize(m_nWight,m_nHeight);
     nameLabel->setAlignment(Qt::AlignCenter);
 //    nameLabel->setStyleSheet("background-color: #00000000; color: #FFFFFF; font-size: 16px;");
 
     slider = new LejuSlider(Qt::Horizontal,this);
     slider->setStyleSheet("QSlider{background-color: #00000000;}"
-                                 "QSlider::groove:horizontal{height: 4px; background-color: #999999; border: 1px solid #666666;border-radius: 2px;}"
-                                 "QSlider::handle:horizontal{background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.5, x3: 0, y3: 1,stop: 0 #FFB75D, stop: 1 #FF6C00); "
-                                 "height: 14px; width: 14px;"
-                                 "margin: -6px 0px -6px 0px; border-radius: 8px; border: 1px solid #FFB75D;}"
+                                 "QSlider::groove:horizontal{height: 1px; background-color: #999999; border: 1px solid #666666;border-radius: 1px;}"
+                                 "QSlider::handle:horizontal{background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.5, x3: 0, y3: 1,stop: 0 #000000, stop: 1 #000000); "
+                                 "height: 14px; width: 4px;"
+                                 "margin: -6px 0px -6px 0px; border-radius: 8px; border: 1px solid #000000;}"
                                  "QSlider::add-page:horizontal{background-color: #FFFFFF; border-radius: 2px;}"
-                                 "QSlider::sub-page:horizontal{background-color: #FF930D; border-radius: 2px;}");
+                                 "QSlider::sub-page:horizontal{background-color: #FFFFFF; border-radius: 2px;}");
+    slider->setFixedWidth(m_nWight*2);
+    slider->setFixedHeight(m_nHeight*.5);
 
     valueLabel = new QLabel("0",this);
-    valueLabel->setFixedSize(m_nWight,m_nHeight);
+    valueLabel->setFixedSize(m_nWight*.8,m_nHeight*.5);
     valueLabel->setAlignment(Qt::AlignCenter);
     valueLabel->setStyleSheet("background-color: #FFFFFF; color: #000000; font-size: 12px; border: 1px solid #666666;");
 
     plusBtn = new LejuPushButton("+",this);
     plusBtn->setPressedAndHoldEnable(true);
-    plusBtn->setFixedSize(m_nHeight,m_nHeight);
+    plusBtn->setFixedSize(m_nHeight*.5,m_nHeight*.5);
 
     minusBtn = new LejuPushButton("-",this);
     minusBtn->setPressedAndHoldEnable(true);
-    minusBtn->setFixedSize(m_nHeight,m_nHeight);
+    minusBtn->setFixedSize(m_nHeight*.5,m_nHeight*.5);
 
     btnLayout = new QHBoxLayout;
     btnLayout->addWidget(minusBtn);
@@ -151,6 +153,7 @@ SliderGroupBox::SliderGroupBox(QWidget *parent) :
     btnLayout->addWidget(plusBtn);
     btnLayout->setMargin(0);
     btnLayout->setSpacing(0);
+
 
     // Layout combination
 
