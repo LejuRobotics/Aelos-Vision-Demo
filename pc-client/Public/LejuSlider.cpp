@@ -122,6 +122,7 @@ SliderGroupBox::SliderGroupBox(QWidget *parent) :
     nameLabel->setFixedSize(m_nWight+20,m_nHeight);
     nameLabel->setAlignment(Qt::AlignCenter);
 //    nameLabel->setStyleSheet("background-color: #00000000; color: #FFFFFF; font-size: 16px;");
+
     slider = new LejuSlider(Qt::Horizontal,this);
     slider->setStyleSheet("QSlider{background-color: #00000000;}"
                                  "QSlider::groove:horizontal{height: 4px; background-color: #999999; border: 1px solid #666666;border-radius: 2px;}"
@@ -130,16 +131,20 @@ SliderGroupBox::SliderGroupBox(QWidget *parent) :
                                  "margin: -6px 0px -6px 0px; border-radius: 8px; border: 1px solid #FFB75D;}"
                                  "QSlider::add-page:horizontal{background-color: #FFFFFF; border-radius: 2px;}"
                                  "QSlider::sub-page:horizontal{background-color: #FF930D; border-radius: 2px;}");
+
     valueLabel = new QLabel("0",this);
     valueLabel->setFixedSize(m_nWight,m_nHeight);
     valueLabel->setAlignment(Qt::AlignCenter);
     valueLabel->setStyleSheet("background-color: #FFFFFF; color: #000000; font-size: 12px; border: 1px solid #666666;");
+
     plusBtn = new LejuPushButton("+",this);
     plusBtn->setPressedAndHoldEnable(true);
     plusBtn->setFixedSize(m_nHeight,m_nHeight);
+
     minusBtn = new LejuPushButton("-",this);
     minusBtn->setPressedAndHoldEnable(true);
     minusBtn->setFixedSize(m_nHeight,m_nHeight);
+
     btnLayout = new QHBoxLayout;
     btnLayout->addWidget(minusBtn);
     btnLayout->addWidget(valueLabel);
@@ -147,14 +152,24 @@ SliderGroupBox::SliderGroupBox(QWidget *parent) :
     btnLayout->setMargin(0);
     btnLayout->setSpacing(0);
 
+    // Layout combination
+
     mainLayout = new QHBoxLayout(this);
     mainLayout->addWidget(nameLabel);
-    mainLayout->addWidget(slider);
-    mainLayout->addLayout(btnLayout);
+
+    sliderValueLayout = new QVBoxLayout(this);
+    sliderValueLayout->addWidget(slider);
+    sliderValueLayout->addLayout(btnLayout);
+
+    mainLayout->addLayout(sliderValueLayout);
+
+//    mainLayout->addWidget(slider);
+//    mainLayout->addLayout(btnLayout);
+
     mainLayout->setMargin(0);
     mainLayout->setSpacing(8);
 
-    setMinimumSize(80,m_nHeight);
+//    setMinimumSize(80,m_nHeight);
 
     slider->installEventFilter(this);
     plusBtn->installEventFilter(this);
