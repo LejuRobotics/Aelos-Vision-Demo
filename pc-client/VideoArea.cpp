@@ -82,7 +82,7 @@ VideoArea::VideoArea(QWidget *parent) :
     connectionBox = new ConnectionBox(this);
     connect(connectionBox, SIGNAL(startConnectTo(QString)), this, SLOT(onStartConnectTo(QString)));
 
-    sliderNameList << "Brightness" << "Contrast" << "YUV_Y" << "MinH"
+    sliderNameList << "Bright" << "Contr." << "YUV_Y" << "MinH"
                       << "MinS" << "MinV" << "MaxH" << "MaxS" << "MaxV";
 
     for (int i=0; i<sliderNameList.size(); ++i)
@@ -918,14 +918,14 @@ void VideoArea::onSliderValueChanged(int value)
 {
     SliderGroupBox *obj = qobject_cast<SliderGroupBox*>(sender());
     QString name = obj->getName();
-    if (name == "Brightness")
+    if (name == "Bright")
     {
         double brightness = value/10.0;
-        m_command = QString("set Color.Brightness=%1").arg(brightness);
+        m_command = QString("set Color.Bright=%1").arg(brightness);
     }
-    else if (name == "Contrast")
+    else if (name == "Contr.")
     {
-        m_command = QString("set Color.Contrast=%1").arg(value);
+        m_command = QString("set Color.Contr=%1").arg(value);
     }
     else if (name == "YUV_Y")
     {

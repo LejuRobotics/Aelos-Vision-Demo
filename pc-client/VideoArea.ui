@@ -98,16 +98,16 @@
       <bool>false</bool>
      </property>
     </widget>
-    <widget class="QWidget" name="verticalLayoutWidget">
+    <widget class="QWidget" name="horizontalLayoutWidget">
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>40</y>
+       <y>50</y>
        <width>461</width>
-       <height>81</height>
+       <height>51</height>
       </rect>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout"/>
+     <layout class="QHBoxLayout" name="verticalLayout"/>
     </widget>
    </widget>
    <widget class="QPushButton" name="connect_btn">
