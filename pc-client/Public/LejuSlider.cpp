@@ -127,25 +127,38 @@ SliderGroupBox::SliderGroupBox(QWidget *parent) :
     slider->setStyleSheet("QSlider{background-color: #00000000;}"
                                  "QSlider::groove:horizontal{height: 1px; background-color: #999999; border: 1px solid #666666;border-radius: 1px;}"
                                  "QSlider::handle:horizontal{background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 0.5, x3: 0, y3: 1,stop: 0 #000000, stop: 1 #000000); "
-                                 "height: 14px; width: 4px;"
-                                 "margin: -6px 0px -6px 0px; border-radius: 8px; border: 1px solid #000000;}"
+                                 "height: 14px; width: 5px; "
+                                 "margin: -6px 0px -6px 0px; border-radius: 2px; border: 1px solid #000000;}"
                                  "QSlider::add-page:horizontal{background-color: #FFFFFF; border-radius: 2px;}"
                                  "QSlider::sub-page:horizontal{background-color: #FFFFFF; border-radius: 2px;}");
     slider->setFixedWidth(m_nWight*2);
-    slider->setFixedHeight(m_nHeight*.5);
+    slider->setFixedHeight(m_nHeight*.6);
 
     valueLabel = new QLabel("0",this);
-    valueLabel->setFixedSize(m_nWight*.8,m_nHeight*.5);
+    valueLabel->setFixedSize(m_nWight*.8,m_nHeight*.8);
     valueLabel->setAlignment(Qt::AlignCenter);
     valueLabel->setStyleSheet("background-color: #FFFFFF; color: #000000; font-size: 12px; border: 1px solid #666666;");
 
-    plusBtn = new LejuPushButton("+",this);
+    plusBtn = new LejuPushButton("-",this);
     plusBtn->setPressedAndHoldEnable(true);
-    plusBtn->setFixedSize(m_nHeight*.5,m_nHeight*.5);
+    plusBtn->setFixedSize(m_nHeight*.8,m_nHeight*.8);
+    plusBtn->setStyleSheet("background-color: #444444;"
+                           "color: #757575;"
+                           "font: bold 16px;"
+                           "margin: 0.5px;"
+                           "text-align: center;"
+                           "border-radius:3px;");
 
-    minusBtn = new LejuPushButton("-",this);
+
+    minusBtn = new LejuPushButton("+",this);
     minusBtn->setPressedAndHoldEnable(true);
-    minusBtn->setFixedSize(m_nHeight*.5,m_nHeight*.5);
+    minusBtn->setFixedSize(m_nHeight*.8,m_nHeight*.8);
+    minusBtn->setStyleSheet("background-color: #444444;"
+                            "color: #757575;"
+                            "font: bold 16px;"
+                            "margin: 0.5px;"
+                            "text-align: center;"
+                            "border-radius:3px;");
 
     btnLayout = new QHBoxLayout;
     btnLayout->addWidget(minusBtn);
