@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1168</width>
-    <height>817</height>
+    <height>845</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -37,16 +37,19 @@
     </sizepolicy>
    </property>
    <property name="styleSheet">
-    <string notr="true"/>
+    <string notr="true">background-color: #2d2d2d;</string>
    </property>
    <widget class="QGroupBox" name="format_groupBox">
     <property name="geometry">
      <rect>
       <x>660</x>
-      <y>359</y>
-      <width>491</width>
-      <height>81</height>
+      <y>329</y>
+      <width>501</width>
+      <height>111</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(81, 81, 81, 100%);</string>
     </property>
     <property name="title">
      <string/>
@@ -55,10 +58,16 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>6</y>
+       <y>23</y>
        <width>81</width>
        <height>21</height>
       </rect>
+     </property>
+     <property name="font">
+      <font>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
      </property>
      <property name="text">
       <string>Original</string>
@@ -71,10 +80,16 @@
      <property name="geometry">
       <rect>
        <x>110</x>
-       <y>6</y>
+       <y>24</y>
        <width>81</width>
        <height>21</height>
       </rect>
+     </property>
+     <property name="font">
+      <font>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
      </property>
      <property name="text">
       <string>Transform</string>
@@ -83,25 +98,44 @@
       <bool>false</bool>
      </property>
     </widget>
-    <widget class="QWidget" name="horizontalLayoutWidget">
+    <widget class="QGroupBox" name="format_groupBox_2">
      <property name="geometry">
       <rect>
-       <x>9</x>
-       <y>28</y>
+       <x>10</x>
+       <y>10</y>
        <width>481</width>
-       <height>51</height>
+       <height>91</height>
       </rect>
      </property>
-     <layout class="QHBoxLayout" name="verticalLayout"/>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgba(121, 121, 121, 100%);</string>
+     </property>
+     <property name="title">
+      <string/>
+     </property>
+     <widget class="QWidget" name="horizontalLayoutWidget">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>40</y>
+        <width>491</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <layout class="QHBoxLayout" name="verticalLayout"/>
+     </widget>
     </widget>
+    <zorder>format_groupBox_2</zorder>
+    <zorder>original_radio</zorder>
+    <zorder>transform_radio</zorder>
    </widget>
    <widget class="QPushButton" name="connect_btn">
     <property name="geometry">
      <rect>
       <x>90</x>
       <y>0</y>
-      <width>70</width>
-      <height>20</height>
+      <width>101</width>
+      <height>21</height>
      </rect>
     </property>
     <property name="minimumSize">
@@ -110,702 +144,35 @@
       <height>20</height>
      </size>
     </property>
+    <property name="font">
+     <font>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(255, 255, 255, 0%);</string>
+    </property>
     <property name="text">
      <string>Connect</string>
     </property>
-   </widget>
-   <widget class="QGroupBox" name="groupBox_3">
-    <property name="geometry">
-     <rect>
-      <x>660</x>
-      <y>462</y>
-      <width>491</width>
-      <height>311</height>
-     </rect>
-    </property>
-    <property name="title">
-     <string/>
-    </property>
-    <widget class="QToolButton" name="record_btn">
-     <property name="geometry">
-      <rect>
-       <x>14</x>
-       <y>11</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="autoFillBackground">
-      <bool>false</bool>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #cf881f;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Add</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/plus.png</normaloff>Icon/plus.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="reset_btn">
-     <property name="geometry">
-      <rect>
-       <x>13</x>
-       <y>67</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #cf881f;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Reset</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/cleaner.png</normaloff>Icon/cleaner.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_1">
-     <property name="geometry">
-      <rect>
-       <x>200</x>
-       <y>11</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Quick walk</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/fastwalk.png</normaloff>Icon/fastwalk.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_2">
-     <property name="geometry">
-      <rect>
-       <x>203</x>
-       <y>191</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Quick back</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/fastback.png</normaloff>Icon/fastback.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_3">
-     <property name="geometry">
-      <rect>
-       <x>106</x>
-       <y>191</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Turn L (s)</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/TurnLS.png</normaloff>Icon/TurnLS.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_4">
-     <property name="geometry">
-      <rect>
-       <x>299</x>
-       <y>191</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Turn R (s)</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/TurnRS.png</normaloff>Icon/TurnRS.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_5">
-     <property name="geometry">
-      <rect>
-       <x>12</x>
-       <y>190</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Turn L (l)</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/TurnLL.png</normaloff>Icon/TurnLL.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_6">
-     <property name="geometry">
-      <rect>
-       <x>396</x>
-       <y>191</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Turn right(L)</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/TurnRL.png</normaloff>Icon/TurnRL.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_MoveOn">
-     <property name="geometry">
-      <rect>
-       <x>201</x>
-       <y>66</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Walk</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/up.png</normaloff>Icon/up.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_MoveStop">
-     <property name="geometry">
-      <rect>
-       <x>201</x>
-       <y>131</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Stop</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/stop.png</normaloff>Icon/stop.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_7">
-     <property name="geometry">
-      <rect>
-       <x>400</x>
-       <y>258</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Stoop</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/icons-bowing_man.png</normaloff>Icon/icons-bowing_man.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_9">
-     <property name="geometry">
-      <rect>
-       <x>297</x>
-       <y>131</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Step Right</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/Right.png</normaloff>Icon/Right.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_10">
-     <property name="geometry">
-      <rect>
-       <x>300</x>
-       <y>257</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>R kick</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/foot-print.png</normaloff>Icon/foot-print.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_8">
-     <property name="geometry">
-      <rect>
-       <x>106</x>
-       <y>131</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Step Left</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/Left.png</normaloff>Icon/Left.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="again_btn">
-     <property name="geometry">
-      <rect>
-       <x>106</x>
-       <y>11</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #cf881f;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Repeat</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/uicon_repeat.png</normaloff>Icon/uicon_repeat.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="auto_radio">
-     <property name="geometry">
-      <rect>
-       <x>294</x>
-       <y>11</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #cf881f;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Execute</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/execute.png</normaloff>Icon/execute.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="manual_radio">
-     <property name="geometry">
-      <rect>
-       <x>394</x>
-       <y>11</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #cf881f;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>Standby</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/standby.png</normaloff>Icon/standby.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QToolButton" name="action_btn_11">
-     <property name="geometry">
-      <rect>
-       <x>108</x>
-       <y>256</y>
-       <width>78</width>
-       <height>46</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: #797979;
-color: rgb(220, 220, 220);
-border-radius:5px;
-border-color: #2dafcb;
-border-width: 2px;
-border-style: solid;</string>
-     </property>
-     <property name="text">
-      <string>L kick</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>Icon/footL.png</normaloff>Icon/footL.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>23</width>
-       <height>23</height>
-      </size>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextUnderIcon</enum>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="pushButton">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>160</y>
-       <width>20</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <pointsize>16</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(81, 81, 81);
-background-color: rgb(81, 81, 81);</string>
-     </property>
-     <property name="text">
-      <string>+</string>
-     </property>
-    </widget>
-   </widget>
-   <widget class="LejuTbableWidget" name="tableWidget">
-    <property name="geometry">
-     <rect>
-      <x>290</x>
-      <y>530</y>
-      <width>361</width>
-      <height>221</height>
-     </rect>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(121, 121, 121);
-color: rgb(220, 220, 220);</string>
+    <property name="icon">
+     <iconset>
+      <normaloff>Icon/connected.png</normaloff>Icon/connected.png</iconset>
     </property>
    </widget>
    <widget class="QGroupBox" name="groupBox_4">
     <property name="geometry">
      <rect>
       <x>660</x>
-      <y>23</y>
+      <y>13</y>
       <width>501</width>
-      <height>301</height>
+      <height>311</height>
      </rect>
     </property>
     <property name="styleSheet">
-     <string notr="true"/>
+     <string notr="true">opacity: 223;
+background-color: rgba(81, 81, 81, 100%);</string>
     </property>
     <property name="title">
      <string/>
@@ -814,7 +181,7 @@ color: rgb(220, 220, 220);</string>
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>6</y>
+       <y>26</y>
        <width>61</width>
        <height>21</height>
       </rect>
@@ -837,10 +204,13 @@ color: rgb(220, 220, 220);</string>
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>26</y>
+       <y>50</y>
        <width>481</width>
        <height>161</height>
       </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgbq(121, 121, 121, 100%);</string>
      </property>
      <property name="title">
       <string/>
@@ -860,8 +230,8 @@ color: rgb(220, 220, 220);</string>
     <widget class="QRadioButton" name="yuv_radio">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>200</y>
+       <x>13</x>
+       <y>219</y>
        <width>71</width>
        <height>21</height>
       </rect>
@@ -879,45 +249,50 @@ color: rgb(220, 220, 220);</string>
       <bool>false</bool>
      </property>
     </widget>
-    <widget class="QWidget" name="verticalLayoutWidget_2">
+    <widget class="QGroupBox" name="hsvGroupBox_2">
      <property name="geometry">
       <rect>
-       <x>13</x>
-       <y>240</y>
-       <width>231</width>
-       <height>51</height>
+       <x>10</x>
+       <y>215</y>
+       <width>481</width>
+       <height>91</height>
       </rect>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_2"/>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgbq(121, 121, 121, 100%);</string>
+     </property>
+     <property name="title">
+      <string/>
+     </property>
+     <widget class="QWidget" name="verticalLayoutWidget_2">
+      <property name="geometry">
+       <rect>
+        <x>1</x>
+        <y>26</y>
+        <width>231</width>
+        <height>61</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2"/>
+     </widget>
     </widget>
     <zorder>hsv_radio</zorder>
     <zorder>hsvGroupBox</zorder>
-    <zorder>yuv_radio</zorder>
-    <zorder>verticalLayoutWidget_2</zorder>
     <zorder>gridLayoutWidget_2</zorder>
-   </widget>
-   <widget class="QTextEdit" name="textEdit">
-    <property name="geometry">
-     <rect>
-      <x>8</x>
-      <y>528</y>
-      <width>271</width>
-      <height>221</height>
-     </rect>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(121, 121, 121);
-color: rgb(220, 220, 220);</string>
-    </property>
+    <zorder>hsvGroupBox_2</zorder>
+    <zorder>yuv_radio</zorder>
    </widget>
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>504</y>
+      <y>513</y>
       <width>31</width>
       <height>21</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(255, 255, 255, 0%);</string>
     </property>
     <property name="text">
      <string/>
@@ -932,11 +307,14 @@ color: rgb(220, 220, 220);</string>
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>287</x>
-      <y>501</y>
+      <x>301</x>
+      <y>507</y>
       <width>31</width>
       <height>31</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(255, 255, 255, 0%);</string>
     </property>
     <property name="text">
      <string/>
@@ -951,15 +329,16 @@ color: rgb(220, 220, 220);</string>
    <widget class="QLabel" name="label_3">
     <property name="geometry">
      <rect>
-      <x>49</x>
-      <y>510</y>
+      <x>46</x>
+      <y>518</y>
       <width>54</width>
       <height>12</height>
      </rect>
     </property>
     <property name="styleSheet">
      <string notr="true">color: rgb(9, 211, 254);
-</string>
+font: bold 16px;
+background-color: rgb(81, 81, 81);</string>
     </property>
     <property name="text">
      <string>Code</string>
@@ -968,14 +347,16 @@ color: rgb(220, 220, 220);</string>
    <widget class="QLabel" name="label_4">
     <property name="geometry">
      <rect>
-      <x>318</x>
-      <y>512</y>
+      <x>334</x>
+      <y>513</y>
       <width>100</width>
-      <height>10</height>
+      <height>16</height>
      </rect>
     </property>
     <property name="styleSheet">
-     <string notr="true">color: rgb(9, 211, 254);</string>
+     <string notr="true">color: rgb(9, 211, 254);
+font: bold 16px;
+background-color: rgb(81, 81, 81);</string>
     </property>
     <property name="text">
      <string>Action List</string>
@@ -990,6 +371,9 @@ color: rgb(220, 220, 220);</string>
       <height>26</height>
      </rect>
     </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(255, 255, 255, 0%);</string>
+    </property>
     <property name="text">
      <string/>
     </property>
@@ -1003,11 +387,14 @@ color: rgb(220, 220, 220);</string>
    <widget class="QLabel" name="label_7">
     <property name="geometry">
      <rect>
-      <x>660</x>
-      <y>438</y>
+      <x>663</x>
+      <y>442</y>
       <width>32</width>
       <height>32</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(255, 255, 255, 0%);</string>
     </property>
     <property name="text">
      <string/>
@@ -1022,11 +409,14 @@ color: rgb(220, 220, 220);</string>
    <widget class="QLabel" name="label_8">
     <property name="geometry">
      <rect>
-      <x>670</x>
-      <y>0</y>
+      <x>665</x>
+      <y>15</y>
       <width>26</width>
       <height>26</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(255, 255, 255, 0%);</string>
     </property>
     <property name="text">
      <string/>
@@ -1042,7 +432,7 @@ color: rgb(220, 220, 220);</string>
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>20</y>
+      <y>22</y>
       <width>640</width>
       <height>480</height>
      </rect>
@@ -1059,6 +449,9 @@ color: rgb(220, 220, 220);</string>
       <height>480</height>
      </size>
     </property>
+    <property name="autoFillBackground">
+     <bool>false</bool>
+    </property>
     <property name="styleSheet">
      <string notr="true">background-color: rgb(0, 0, 0);
 </string>
@@ -1067,21 +460,832 @@ color: rgb(220, 220, 220);</string>
      <string/>
     </property>
    </widget>
+   <widget class="QLabel" name="label_5">
+    <property name="geometry">
+     <rect>
+      <x>695</x>
+      <y>21</y>
+      <width>101</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>-1</pointsize>
+      <weight>75</weight>
+      <italic>false</italic>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(9, 211, 254);
+font: bold 16px;
+background-color: rgb(81, 81, 81);</string>
+    </property>
+    <property name="text">
+     <string>Detection</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_9">
+    <property name="geometry">
+     <rect>
+      <x>698</x>
+      <y>338</y>
+      <width>101</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(9, 211, 254);
+font: bold 16px;
+background-color: rgb(81, 81, 81);</string>
+    </property>
+    <property name="text">
+     <string>Display</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_10">
+    <property name="geometry">
+     <rect>
+      <x>699</x>
+      <y>450</y>
+      <width>71</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(9, 211, 254);
+font: bold 16px;
+background-color: rgb(81, 81, 81);</string>
+    </property>
+    <property name="text">
+     <string>Control</string>
+    </property>
+   </widget>
+   <widget class="QGroupBox" name="format_groupBox_3">
+    <property name="geometry">
+     <rect>
+      <x>660</x>
+      <y>447</y>
+      <width>501</width>
+      <height>341</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(81, 81, 81, 100%);</string>
+    </property>
+    <property name="title">
+     <string/>
+    </property>
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>20</y>
+       <width>491</width>
+       <height>321</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgba(121, 121, 121, 100%);</string>
+     </property>
+     <property name="title">
+      <string/>
+     </property>
+     <widget class="QToolButton" name="record_btn">
+      <property name="geometry">
+       <rect>
+        <x>14</x>
+        <y>11</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="autoFillBackground">
+       <bool>false</bool>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #cf881f;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Add</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/plus.png</normaloff>Icon/plus.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="checkable">
+       <bool>true</bool>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="reset_btn">
+      <property name="geometry">
+       <rect>
+        <x>13</x>
+        <y>67</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #cf881f;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Reset</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/cleaner.png</normaloff>Icon/cleaner.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="checkable">
+       <bool>true</bool>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_1">
+      <property name="geometry">
+       <rect>
+        <x>200</x>
+        <y>11</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Quick walk</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/fastwalk.png</normaloff>Icon/fastwalk.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_2">
+      <property name="geometry">
+       <rect>
+        <x>203</x>
+        <y>191</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Quick back</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/fastback.png</normaloff>Icon/fastback.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_3">
+      <property name="geometry">
+       <rect>
+        <x>106</x>
+        <y>191</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Turn L (s)</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/TurnLS.png</normaloff>Icon/TurnLS.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_4">
+      <property name="geometry">
+       <rect>
+        <x>299</x>
+        <y>191</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Turn R (s)</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/TurnRS.png</normaloff>Icon/TurnRS.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_5">
+      <property name="geometry">
+       <rect>
+        <x>12</x>
+        <y>190</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Turn L (l)</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/TurnLL.png</normaloff>Icon/TurnLL.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_6">
+      <property name="geometry">
+       <rect>
+        <x>396</x>
+        <y>191</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Turn right(L)</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/TurnRL.png</normaloff>Icon/TurnRL.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_MoveOn">
+      <property name="geometry">
+       <rect>
+        <x>201</x>
+        <y>66</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Walk</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/up.png</normaloff>Icon/up.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_MoveStop">
+      <property name="geometry">
+       <rect>
+        <x>201</x>
+        <y>131</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Stop</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/stop.png</normaloff>Icon/stop.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_7">
+      <property name="geometry">
+       <rect>
+        <x>400</x>
+        <y>258</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Stoop</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/icons-bowing_man.png</normaloff>Icon/icons-bowing_man.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_9">
+      <property name="geometry">
+       <rect>
+        <x>297</x>
+        <y>131</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Step Right</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/Right.png</normaloff>Icon/Right.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_10">
+      <property name="geometry">
+       <rect>
+        <x>300</x>
+        <y>257</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>R kick</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/foot-print.png</normaloff>Icon/foot-print.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_8">
+      <property name="geometry">
+       <rect>
+        <x>106</x>
+        <y>131</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Step Left</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/Left.png</normaloff>Icon/Left.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="again_btn">
+      <property name="geometry">
+       <rect>
+        <x>106</x>
+        <y>11</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #cf881f;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Repeat</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/uicon_repeat.png</normaloff>Icon/uicon_repeat.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="checkable">
+       <bool>true</bool>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="auto_radio">
+      <property name="geometry">
+       <rect>
+        <x>294</x>
+        <y>11</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #cf881f;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Execute</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/execute.png</normaloff>Icon/execute.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="manual_radio">
+      <property name="geometry">
+       <rect>
+        <x>394</x>
+        <y>11</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #cf881f;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>Standby</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/standby.png</normaloff>Icon/standby.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="action_btn_11">
+      <property name="geometry">
+       <rect>
+        <x>108</x>
+        <y>256</y>
+        <width>78</width>
+        <height>46</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #797979;
+color: rgb(220, 220, 220);
+border-radius:5px;
+border-color: #2dafcb;
+border-width: 2px;
+border-style: solid;</string>
+      </property>
+      <property name="text">
+       <string>L kick</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>Icon/footL.png</normaloff>Icon/footL.png</iconset>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>23</width>
+        <height>23</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonTextUnderIcon</enum>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pushButton">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>160</y>
+        <width>20</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>16</pointsize>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: rgb(81, 81, 81);
+background-color: rgb(81, 81, 81);</string>
+      </property>
+      <property name="text">
+       <string>+</string>
+      </property>
+     </widget>
+    </widget>
+   </widget>
+   <widget class="QGroupBox" name="groupBox">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>510</y>
+      <width>291</width>
+      <height>291</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(81, 81, 81, 100%);</string>
+    </property>
+    <property name="title">
+     <string/>
+    </property>
+    <widget class="QTextEdit" name="textEdit">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>30</y>
+       <width>271</width>
+       <height>261</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(121, 121, 121);
+color: rgb(220, 220, 220);</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QGroupBox" name="groupBox_2">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>510</y>
+      <width>351</width>
+      <height>291</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(81, 81, 81, 100%);</string>
+    </property>
+    <property name="title">
+     <string/>
+    </property>
+    <widget class="LejuTbableWidget" name="tableWidget">
+     <property name="geometry">
+      <rect>
+       <x>6</x>
+       <y>26</y>
+       <width>341</width>
+       <height>261</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: rgb(121, 121, 121);
+color: rgb(220, 220, 220);</string>
+     </property>
+    </widget>
+   </widget>
+   <zorder>groupBox_2</zorder>
    <zorder>connect_btn</zorder>
-   <zorder>format_groupBox</zorder>
-   <zorder>groupBox_3</zorder>
    <zorder>label_6</zorder>
    <zorder>groupBox_4</zorder>
-   <zorder>label_3</zorder>
-   <zorder>label</zorder>
-   <zorder>textEdit</zorder>
-   <zorder>tableWidget</zorder>
    <zorder>label_4</zorder>
    <zorder>label_2</zorder>
-   <zorder>label_7</zorder>
-   <zorder>label_8</zorder>
-   <zorder>video_label</zorder>
    <zorder>gridLayoutWidget_2</zorder>
+   <zorder>label_9</zorder>
+   <zorder>format_groupBox_3</zorder>
+   <zorder>label_7</zorder>
+   <zorder>label_10</zorder>
+   <zorder>label_5</zorder>
+   <zorder>label_8</zorder>
+   <zorder>groupBox</zorder>
+   <zorder>label_3</zorder>
+   <zorder>label</zorder>
+   <zorder>format_groupBox</zorder>
+   <zorder>video_label</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
