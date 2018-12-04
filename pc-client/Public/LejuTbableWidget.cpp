@@ -27,6 +27,8 @@ LejuTbableWidget::LejuTbableWidget(QWidget *parent) : QTableWidget(parent)
     horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
 
+    horizontalHeader()->setStyleSheet("color: red; background-color: #424242; border: 1px solid #4f4f4f;");
+
     //创建右键菜单
     menu = new QMenu(this);
     QAction *action = new QAction(this);
