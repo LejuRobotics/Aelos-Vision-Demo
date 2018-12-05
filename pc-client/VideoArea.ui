@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1168</width>
+    <width>1155</width>
     <height>873</height>
    </rect>
   </property>
@@ -50,8 +50,8 @@
    <widget class="QGroupBox" name="format_groupBox">
     <property name="geometry">
      <rect>
-      <x>647</x>
-      <y>316</y>
+      <x>648</x>
+      <y>320</y>
       <width>501</width>
       <height>131</height>
      </rect>
@@ -124,7 +124,7 @@ color: rgb(214, 212, 214);</string>
       <rect>
        <x>5</x>
        <y>29</y>
-       <width>481</width>
+       <width>491</width>
        <height>91</height>
       </rect>
      </property>
@@ -252,7 +252,7 @@ background-color: rgb(81, 81, 81);</string>
     <property name="geometry">
      <rect>
       <x>657</x>
-      <y>317</y>
+      <y>321</y>
       <width>26</width>
       <height>26</height>
      </rect>
@@ -273,8 +273,8 @@ background-color: rgb(81, 81, 81);</string>
    <widget class="QLabel" name="label_7">
     <property name="geometry">
      <rect>
-      <x>653</x>
-      <y>455</y>
+      <x>654</x>
+      <y>462</y>
       <width>32</width>
       <height>32</height>
      </rect>
@@ -296,7 +296,7 @@ background-color: rgb(81, 81, 81);</string>
     <property name="geometry">
      <rect>
       <x>654</x>
-      <y>2</y>
+      <y>5</y>
       <width>26</width>
       <height>26</height>
      </rect>
@@ -350,7 +350,7 @@ background-color: rgb(81, 81, 81);</string>
     <property name="geometry">
      <rect>
       <x>684</x>
-      <y>8</y>
+      <y>11</y>
       <width>101</width>
       <height>16</height>
      </rect>
@@ -377,7 +377,7 @@ background-color: rgb(81, 81, 81);</string>
     <property name="geometry">
      <rect>
       <x>691</x>
-      <y>322</y>
+      <y>326</y>
       <width>101</width>
       <height>16</height>
      </rect>
@@ -403,8 +403,8 @@ background-color: rgb(81, 81, 81);</string>
    <widget class="QLabel" name="label_10">
     <property name="geometry">
      <rect>
-      <x>689</x>
-      <y>463</y>
+      <x>690</x>
+      <y>470</y>
       <width>71</width>
       <height>16</height>
      </rect>
@@ -558,8 +558,8 @@ section { background-color:red }</string>
     <widget class="QGroupBox" name="groupBox_4">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>10</y>
+       <x>9</x>
+       <y>14</y>
        <width>501</width>
        <height>311</height>
       </rect>
@@ -689,8 +689,8 @@ background-color: rgb(121, 121, 121);</string>
     <widget class="QGroupBox" name="format_groupBox_3">
      <property name="geometry">
       <rect>
-       <x>6</x>
-       <y>462</y>
+       <x>8</x>
+       <y>466</y>
        <width>501</width>
        <height>361</height>
       </rect>
@@ -706,7 +706,7 @@ border-radius:10px;</string>
       <property name="geometry">
        <rect>
         <x>5</x>
-        <y>39</y>
+        <y>44</y>
         <width>491</width>
         <height>311</height>
        </rect>
@@ -1505,7 +1505,7 @@ border-style: solid;</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1168</width>
+     <width>1155</width>
      <height>23</height>
     </rect>
    </property>
