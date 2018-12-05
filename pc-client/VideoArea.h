@@ -95,7 +95,7 @@ private:
     QRect m_original_rect;
     QString m_mark_rgb;
 
-    QList<QPushButton*> btnList;
+    QList<QToolButton*> btnList;
     QButtonGroup *action_btn_group;
 
     QList<LejuSlider*> qsliderList;

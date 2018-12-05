@@ -14,7 +14,7 @@ LejuTbableWidget::LejuTbableWidget(QWidget *parent) : QTableWidget(parent)
 {
     //设置表头
     setColumnCount(7);
-    m_headLabelList << tr("Name") << tr("Time") << tr("Color")
+    m_headLabelList << tr(" Name") << tr("Time") << tr("Color")
                     << tr("Width") << tr("Type") << tr("Turn")
                     << tr("State");
     setHorizontalHeaderLabels(m_headLabelList);
@@ -26,6 +26,10 @@ LejuTbableWidget::LejuTbableWidget(QWidget *parent) : QTableWidget(parent)
     horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
     horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
+
+//    horizontalHeader()->setStyleSheet("color: red;");
+//    horizontalHeader()->setStyleSheet("color: red; background-color: #424242; ");
+    horizontalHeader()->setStyleSheet("QHeaderView::section {background-color: #797979; border-radius:0px; border-width: 1px;}");
 
     //创建右键菜单
     menu = new QMenu(this);
