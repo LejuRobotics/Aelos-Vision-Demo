@@ -759,7 +759,8 @@ void VideoArea::on_again_btn_clicked()
 
 void VideoArea::on_auto_radio_clicked(bool checked)
 {
-    if (checked)
+    qDebug() << "on_auto_radio_clicked" << endl;
+    if (1)
     {
         for (int i=0; i<btnList.size(); ++i)
         {
@@ -767,6 +768,7 @@ void VideoArea::on_auto_radio_clicked(bool checked)
         }
         QString cmd("set Robot.Action=auto");
         WriteData(cmd.toUtf8());
+        qDebug() << "set Robot.Action=auto" << endl;
     }
 }
 
@@ -777,7 +779,7 @@ void VideoArea::on_auto_radio_clicked(bool checked)
 
 void VideoArea::on_manual_radio_clicked(bool checked)
 {
-    if (checked)
+    if (1)
     {
         for (int i=0; i<btnList.size(); ++i)
         {
@@ -785,6 +787,7 @@ void VideoArea::on_manual_radio_clicked(bool checked)
         }
         QString cmd("set Robot.Action=manual");
         WriteData(cmd.toUtf8());
+        qDebug() << "set Robot.Action=manual" << endl;
     }
 }
 
