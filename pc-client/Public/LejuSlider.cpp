@@ -141,7 +141,7 @@ SliderGroupBox::SliderGroupBox(QWidget *parent) :
     valueLabel = new QLabel("0",this);
     valueLabel->setFixedSize(m_nWight*.8,m_nHeight*.8);
     valueLabel->setAlignment(Qt::AlignCenter);
-    valueLabel->setStyleSheet("background-color: #FFFFFF; color: #797979; font-size: 12px; border-radius: 5px; border: 1px solid #666666;");
+    valueLabel->setStyleSheet("background-color: #FFFFFF; color: #797979; font-size: 13px; font-family: Microsoft YaHei;  border-radius: 5px; border: 1px solid #666666;");
 
     plusBtn = new LejuPushButton("-",this);
     plusBtn->setPressedAndHoldEnable(true);
